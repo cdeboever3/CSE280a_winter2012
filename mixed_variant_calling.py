@@ -134,8 +134,6 @@ if __name__ == '__main__':
             else:
                 exp_freq = j
             
-            if debug and binom.pmf(round(alt[0]*alt[1]),alt[0],exp_freq)==0:
-                pdb.set_trace()
             ll += np.log(binom.pmf(round(alt[0]*alt[1]),alt[0],exp_freq))
         
         if ll > best_ll:

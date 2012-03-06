@@ -76,4 +76,4 @@ if __name__ == '__main__':
         cov = int(round(gauss(avg_cov,std_cov)))
         alt_reads = binomial(cov,error_rate)
 
-        print >>outF, '{0}\t{1}'.format(cov-alt_reads,alt_reads)
+        print >>outF, '{0}\t{1}'.format(cov-alt_reads,alt_reads+1)
