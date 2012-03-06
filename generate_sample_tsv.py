@@ -43,7 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('-sL', default=subL, nargs='+', help='List of subpopulation frequencies. Default: {0}'.format(' '.join([ str(x) for x in subL ])))
     parser.add_argument('-ns', default=num_sites, type=int, help='Number of variable sites. Default: {0}'.format(num_sites))
     parser.add_argument('-nn', default=num_noise_sites, type=int, help='Number of variable sites that are noise. Default: {0}'.format(num_noise_sites))
-    parser.add_argument('-er', default=error_rate, type=int, help='Error rate for noise sites. Default: {0}'.format(error_rate))
+    parser.add_argument('-er', default=error_rate, type=float, help='Error rate for noise sites. Default: {0}'.format(error_rate))
     parser.add_argument('-ac', default=avg_cov, type=int, help='Average coverage. Default: {0}'.format(avg_cov))
     parser.add_argument('-sc', default=std_cov, type=int, help='Standard deviation of coverage. Default: {0}'.format(std_cov))
     parser.add_argument('-d', action='store_true', help='Enable python debugger.')
