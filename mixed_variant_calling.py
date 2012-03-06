@@ -29,6 +29,9 @@ def get_altL(fn):
     f = open(fn,'r')
     linesL = [ x.strip().split('\t') for x in f.readlines() ]
     f.close()
+    for i in range(len(linesL)):
+        if linesL[i][0] == '0':
+            linesL[i][0] = '1'
     return zip([int(x[0])+int(x[1]) for x in linesL ], [ float(x[1])/float(x[0]) for x in linesL ])
 
 def generate_possible_freqL(pL,sL):
@@ -82,7 +85,7 @@ if __name__ == '__main__':
     altL = get_altL(inN) # a list of number of reads and alternate allele frequencies
 
     if len(ploidyL) > 2:
-        print >>sys.err, 'Sorry, only two subpopulations are currently supported.'
+        print >>sys.stderr, 'Sorry, only two subpopulations are currently supported.'
         sys.exit(1)
 
     ### grid search ###
@@ -92,7 +95,7 @@ if __name__ == '__main__':
     best_ll = float("inf")
 
     for par in parL:
-        exp_freqL = generate_possible_freqL(pL,sL)
+        exp_freqL = generate_possible_freqL(ploidyL,parL)
 
         ll = 0 # log-likelihood
 
