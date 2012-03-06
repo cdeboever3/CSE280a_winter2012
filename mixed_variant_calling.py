@@ -3,6 +3,8 @@
 
 import sys, argparse, pdb, glob, os
 import numpy as np
+from bisect import bisect_left 
+from scipy.stats import binom
 
 ### helper functions ###
 
@@ -32,7 +34,7 @@ def get_altL(fn):
     for i in range(len(linesL)):
         if linesL[i][0] == '0':
             linesL[i][0] = '1'
-    return zip([int(x[0])+int(x[1]) for x in linesL ], [ float(x[1])/float(x[0]) for x in linesL ])
+    return zip([ int(x[0])+int(x[1]) for x in linesL ], [ float(x[1])/(float(x[0])+float(x[1])) for x in linesL ])
 
 def generate_possible_freqL(pL,sL):
     """
@@ -51,8 +53,9 @@ def generate_possible_freqL(pL,sL):
     aL = []
     for g in M:
         aL.append(sum(np.array([ int(x) for x in list(g) ])*p_freqL))
-    return sorted(list(set(aL))) # only look at distinct frequencies
-
+    freqL = sorted(list(set(aL)))[1:] # only look at distinct frequencies and don't look at 0%
+    freqL[-1] = 0.999 # we don't want 1 for binomial pmf
+    return freqL
     
 def grid_search_parameters(step):
     """
@@ -91,27 +94,39 @@ if __name__ == '__main__':
     ### grid search ###
 
     parL = grid_search_parameters(0.01)
-    best_parL = []
-    best_ll = float("inf")
+    best_par = []
+    best_ll = float("-inf")
 
     for par in parL:
-        exp_freqL = generate_possible_freqL(ploidyL,parL)
+        exp_freqL = generate_possible_freqL(ploidyL,par)
 
         ll = 0 # log-likelihood
 
         for alt in altL:
-            i = find_lt(exp_freqL,alt[1])
-            j = find_ge(exp_freqL,alt[1])
-            if alt[1]-exp_freqL[i] < exp_freqL[j]-alt[1]:
-                exp_freq = exp_freqL[i]
+            try:
+                i = find_lt(exp_freqL,alt[1]) # Find rightmost value less than x
+            except ValueError:
+                i = float("-inf")
+                # if debug:
+                #     pdb.set_trace()
+            try:
+                j = find_ge(exp_freqL,alt[1]) # Find leftmost item greater than or equal to x
+            except ValueError:
+                j = float("inf")
+                # if debug:
+                #     pdb.set_trace()
+            if alt[1]-i < j-alt[1]:
+                exp_freq = i
             else:
-                exp_freq = exp_freqL[j]
-
-            ll += np.log(binom.pmf(alt[0]*alt[1],alt[0],exp_freq))
+                exp_freq = j
+            
+            if debug and binom.pmf(round(alt[0]*alt[1]),alt[0],exp_freq)==0:
+                pdb.set_trace()
+            ll += np.log(binom.pmf(round(alt[0]*alt[1]),alt[0],exp_freq))
         
-        if ll < best_ll:
+        if ll > best_ll:
             best_ll = ll
-            best_parL = parL
+            best_par = par
 
-    print >>sys.stdout, 'log-likelihood: {0}\npopulation frequencies: {1}'.format(ll,' '.join(best_parL))
+    print >>sys.stdout, 'log-likelihood: {0}\npopulation frequencies: {1}'.format(best_ll,' '.join([ str(x) for x in best_par ]))
 
