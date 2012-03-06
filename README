@@ -1,3 +1,14 @@
 Code for our CSE280a project!
 
 wgsim is a read simulator from https://github.com/lh3/wgsim
+
+Project description from Vineet:
+
+5	SNV calling in mixed samples
+Consider a project in which you are calling variants in a donor (relative to a reference) that may have some disease. Unfortunately (as with tumor samples), the donor sample might be a mix of normal (fraction α of the cells) and diseased (1 − α) tissue, where the value of α is unknown. Most SNV calling pipelines assume a pure sample and call variants assuming that each variant is homozygous (all reads have the same allele) or heterozygous (the two alleles appear in a 50:50 ratio), and are confused by such mixed samples.
+5.1 Input
+All input is simulated, and generating it is part of the project.
+5.2 Output
+1. A program that simulates reads from a fictitious donor with a mix of two genomes (normal and diseased). First create two genomes (Use 100Mbp of the real reference from one of the chromosomes) with variations in one of the two. The variations are somatic, and are very sparse. Then, use the bwa read simulator to simulate reads from the two genomes sampled at rate α, 1 − α. The number of reads is controlled by a parameter c, denoting average coverage of all base-pairs.
+2. Devise an algorithm for identifying variants. Test performance by looking at false-positives, false- negatives in multiple samples for different values of coverage, α, and read error-rate.
+3. Your algorithm should also provide an estimate of α.
