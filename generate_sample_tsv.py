@@ -39,8 +39,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='This script makes a sample input file for the variant calling script by simulating read counts using a binomial distribution and coverage with a Gaussian.')
     parser.add_argument('-o', nargs='?', type=argparse.FileType('w'),default=sys.stdout, help='Output file. Default: standard out')
-    parser.add_argument('-pL', default=ploidyL, nargs='+', help='A list of ploidies. Each entry in the list represents the anticipated ploidy of a subpopulation. For instance, if you expect two diploid subpopulations and one triploid subpopulation, enter 2 2 3. Default: {0}'.format(' '.join([str(x) for x in ploidyL])))
-    parser.add_argument('-sL', default=subL, nargs='+', help='List of subpopulation frequencies. Default: {0}'.format(' '.join([ str(x) for x in subL ])))
+    parser.add_argument('-pL', default=ploidyL, type=int, nargs='+', help='A list of ploidies. Each entry in the list represents the anticipated ploidy of a subpopulation. For instance, if you expect two diploid subpopulations and one triploid subpopulation, enter 2 2 3. Default: {0}'.format(' '.join([str(x) for x in ploidyL])))
+    parser.add_argument('-sL', default=subL, type=float, nargs='+', help='List of subpopulation frequencies. Default: {0}'.format(' '.join([ str(x) for x in subL ])))
     parser.add_argument('-ns', default=num_sites, type=int, help='Number of variable sites. Default: {0}'.format(num_sites))
     parser.add_argument('-nn', default=num_noise_sites, type=int, help='Number of variable sites that are noise. Default: {0}'.format(num_noise_sites))
     parser.add_argument('-er', default=error_rate, type=float, help='Error rate for noise sites. Default: {0}'.format(error_rate))
@@ -64,6 +64,8 @@ if __name__ == '__main__':
         print >>sys.stderr, 'Sorry, only two subpopulations are currently supported.'
         sys.exit(1)
 
+    if debug:
+        pdb.set_trace()
     exp_freqL = generate_possible_freqL(ploidyL,subL)[1:] # we don't want 0 frequency
 
     for iii in range(num_sites-num_noise_sites):

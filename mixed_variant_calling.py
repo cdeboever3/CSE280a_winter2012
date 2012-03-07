@@ -54,7 +54,7 @@ def generate_possible_freqL(pL,sL,er):
     Output: list of possible allele frequences
     """
     h = sum(pL) # number of different haplotypes
-    L = [ bin(x)[2:] for x in range(0,2**h) ]
+    L = [ bin(x)[2:] for x in range(1,2**h-1) ] # range from 1 to 2**h-1 because we don't want 0% or 100% allele freq
     M = [ '0'*(len(L[-1])-len(x))+x for x in L ]
     p_freqL = []
     for i in range(len(pL)):
@@ -64,10 +64,7 @@ def generate_possible_freqL(pL,sL,er):
     aL = []
     for g in M:
         aL.append(sum(np.array([ int(x) for x in list(g) ])*p_freqL))
-    freqL = sorted(list(set(aL))) # only look at distinct frequencies
-    freqL[0] = er # we don't want 0 for binomial pmf or we'll end up with 0 probabilities
-    freqL[-1] = 1-er # we don't want 1 for binomial pmf or we'll end up with 0 probabilities
-    return freqL
+    return sorted(list(set(aL+[er,1-er]))) 
     
 def grid_search_parameters(step):
     """
@@ -75,10 +72,29 @@ def grid_search_parameters(step):
     Input: step size
     Output: subpopulation frequencies to try
     """
-    f1 = list(np.arange(0,1+step,step))
-    f2 = list(np.arange(0,1+step,step))
+    f1 = list(np.arange(step,1,step))
+    f2 = list(np.arange(step,1,step))
     f2.reverse()
     return zip(f1,f2)
+
+def estimate_genotype(alt_freq,exp_freqL):
+    """
+    Maximum likelihood estimator of alt_freq given possibilities in exp_freqL
+    Input: observed alternate frequency and list of expected alternate frequencies
+    Output: ML estimator of true alternate allele frequency
+    """
+    try:
+        i = find_lt(exp_freqL,alt_freq) # Find rightmost value less than x
+    except ValueError:
+        i = float("-inf")
+    try:
+        j = find_ge(exp_freqL,alt_freq) # Find leftmost item greater than or equal to x
+    except ValueError:
+        j = float("inf")
+    if alt_freq-i < j-alt_freq:
+        return i
+    else:
+        return j
 
 if __name__ == '__main__':
 
@@ -117,27 +133,17 @@ if __name__ == '__main__':
 
     for par in parL:
         exp_freqL = generate_possible_freqL(ploidyL,par,error_rate)
-
         ll = 0 # log-likelihood
 
         for alt in altL:
-            try:
-                i = find_lt(exp_freqL,alt[1]) # Find rightmost value less than x
-            except ValueError:
-                i = float("-inf")
-            try:
-                j = find_ge(exp_freqL,alt[1]) # Find leftmost item greater than or equal to x
-            except ValueError:
-                j = float("inf")
-            if alt[1]-i < j-alt[1]:
-                exp_freq = i
-            else:
-                exp_freq = j
-            
-            ll += np.log(binom.pmf(round(alt[0]*alt[1]),alt[0],exp_freq))
+            exp_freq = estimate_genotype(alt[1],exp_freqL)
+            ll += np.log(binom.pmf(round(alt[0]*alt[1]),alt[0],exp_freq)) 
+            # round(alt[0]*alt[1]) is the number of reads we saw supporting alternate allele (i.e. the number of successes under the binomial test)
+            # alt[0] is the total number of reads covering this site (i.e. the number of attempts in our binomial test)
+            # exp_freq is our probability of success (i.e. observing a read supporting alternate) from our ML estimation (see estimate_genotype)
         
         if ll > best_ll:
             best_ll = ll
             best_par = par
 
-    print >>sys.stdout, 'log-likelihood: {0}\npopulation frequencies: {1}'.format(best_ll,' '.join([ str(x) for x in best_par ]))
+    print >>sys.stdout, 'log-likelihood\t{0}\npopulation frequencies\t{1}'.format(best_ll,'\t'.join([ str(x) for x in best_par ]))
