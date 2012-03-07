@@ -4,13 +4,13 @@ import argparse, subprocess, random, os
 import numpy as np
 from sample_genome import weighted_random, format_fasta
 
-def generate_allele_freq(alphabet, distribution):
+def generate_allele_freq(allele_space, distribution):
     """Generate allele frequences.
-    @alphabet : List of alleles
+    @allele_space : List of alleles
     @distribution : Distribution to sample frequencies."""
 
     if distribution.upper()=='UNIFORM':
-        freq_list = [random.random() for i in range(len(alphabet))]
+        freq_list = [random.random() for i in range(len(allele_space))]
     else:
         raise Exception("Distribution %s isn't supported" % distribution)
     
@@ -42,17 +42,22 @@ def mutate_seq(seq, mu, pl):
 
     # Mutate positions:
     for pos in pos_list:
+
+        orig_allele = seq[pos]  # Original allele
+        
+        # A list of two alleles: the original and a random other allele
+        allele_space = [orig_allele] + random.sample(set(alphabet) - set([orig_allele]), 1)
         
         # Generate new alleles for position
-        orig_alleles = [s[pos] for s in seq_list]
-        freq_list = generate_allele_freq(alphabet, 'UNIFORM')
+        freq_list = generate_allele_freq(allele_space, 'UNIFORM')
         while True:
-            new_alleles = [weighted_random(alphabet, freq_list) for i in range(pl)]
+            
+            new_alleles = [weighted_random(allele_space, freq_list) for i in range(pl)]
                         
             # Repeat if every new allele matches the original allele
-            if not all([x==y for x,y in zip(new_alleles, orig_alleles)]): break
+            if not all([x==orig_allele for x in new_alleles]): break
         
-        if debug: print pos+1, orig_alleles, new_alleles, freq_list
+        if debug: print pos+1, orig_allele, new_alleles, freq_list
 
         # Mutate
         for a, seq in zip(new_alleles, seq_list): seq[pos] = a
@@ -63,7 +68,7 @@ def mutate_seq(seq, mu, pl):
 def main():
     parser = argparse.ArgumentParser(description='Generate normal or cancer genomes by mutating a reference sequence')
     parser.add_argument('--ref', required=True, help='FASTA file of a contiguous reference sequence')
-    parser.add_argument('--k', default=['n1, c1'], nargs='+', help="List of genome types to generate.  Each genome type is denoted by a two-letter word where the first letter is either 'n' (normal) or 'c' (cancer).  The second letter is a positive integer indicating which individual the genome comes from.  For example, 'n1 c1 n2' means generating three genomes where the first two genomes are a normal and cancer genome from the same individual, and where the third genome is a normal one taken from a different individual.  As another example, 'n1 n2 n3 n4' means generating four normal genomes, each of which comes from a different individual.")
+    parser.add_argument('--k', default=['n1, c1'], nargs='+', required=True, help="List of genome types to generate.  Each genome type is denoted by a two-letter word where the first letter is either 'n' (normal) or 'c' (cancer).  The second letter is a positive integer indicating which individual the genome comes from.  For example, 'n1 c1 n2' means generating three genomes where the first two genomes are a normal and cancer genome from the same individual, and where the third genome is a normal one taken from a different individual.  As another example, 'n1 n2 n3 n4' means generating four normal genomes, each of which comes from a different individual.")
     parser.add_argument('--pl', required=True, type=int, help='Genome ploidy')
     parser.add_argument('--germ-mu', type=float, required=True, help='Germline mutation rate, i.e. the probability that any haploid in a normal genome differs from the reference at a particular site.')
     parser.add_argument('--som-mu', type=float, required=True, help='Somatic x mutation rate, i.e. the probability that any haploid in a cancerous genome differs from the reference at a particular site.')
@@ -71,7 +76,8 @@ def main():
     parser.add_argument('--reads', required=True, type=float, help='The number of reads to sample')                      
     parser.add_argument('--e', type=float, default=0.02, help='Sequencing error rate when generating reads (Default: 0.02)')
     parser.add_argument('--debug', action='store_true')
-    parser.add_argument('--output', required=True, help='Output file')
+    parser.add_argument('--reads1', required=True, help='Output file for the first read of every paired-end.')
+    parser.add_argument('--reads2', required=True, help='Output file for the second read of every paired-end.')
     args = parser.parse_args()
 
     global debug
@@ -131,7 +137,8 @@ def main():
         open(d+'.fa', 'w').write(fasta)
 
         
-    if os.path.isfile(args.output): os.remove(args.output)  # Remove output file 
+    if os.path.isfile(args.reads1): os.remove(args.reads1) 
+    if os.path.isfile(args.reads2): os.remove(args.reads2) 
 
     for d, a in zip(args.k, args.alpha):
 
@@ -147,7 +154,8 @@ def main():
         p.wait()
 
         # Append first reads to output file
-        subprocess.call('cat %s | head -%s >> %s' % (tmp1, n*4, args.output), shell=True)
+        subprocess.call('cat %s | head -%s >> %s' % (tmp1, n*4, args.reads1), shell=True)
+        subprocess.call('cat %s | head -%s >> %s' % (tmp2, n*4, args.reads2), shell=True)
 
 if __name__=='__main__':
     main()   
