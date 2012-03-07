@@ -12,3 +12,16 @@ All input is simulated, and generating it is part of the project.
 1. A program that simulates reads from a fictitious donor with a mix of two genomes (normal and diseased). First create two genomes (Use 100Mbp of the real reference from one of the chromosomes) with variations in one of the two. The variations are somatic, and are very sparse. Then, use the bwa read simulator to simulate reads from the two genomes sampled at rate α, 1 − α. The number of reads is controlled by a parameter c, denoting average coverage of all base-pairs.
 2. Devise an algorithm for identifying variants. Test performance by looking at false-positives, false- negatives in multiple samples for different values of coverage, α, and read error-rate.
 3. Your algorithm should also provide an estimate of α.
+
+
+## Prerequisites ##
+Downloaded hg19 from http://hgdownload.cse.ucsc.edu/goldenPath/hg19/bigZips/chromFa.tar.gz
+Extract into directory 'hg19'
+
+## Example commands ##
+
+# Output random 100Mb region from hg19
+sample_genome.py --genome-dir hg19 --output ref.fa --sample-length 100000000
+
+# Simulate 10000 reads from the 100Mb region above.  Reads come from an individual's normal and cancer diploid genomes at proportions of 0.25 and 0.75, respectively.  Germline mutation rate is 1e-4 and somatic mut rate is 1e-6.  
+generate_genomes.py --ref ref.fa --k n1 c1 --pl 2 --germ-mu 1e-4 --som-mu 1e-6 --alpha 0.25 0.75 --reads 10000 --output reads.fq
