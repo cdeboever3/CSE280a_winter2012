@@ -4,13 +4,13 @@ import argparse, subprocess, random, os
 import numpy as np
 from sample_genome import weighted_random, format_fasta
 
-def generate_allele_freq(alphabet, distribution):
+def generate_allele_freq(allele_space, distribution):
     """Generate allele frequences.
-    @alphabet : List of alleles
+    @allele_space : List of alleles
     @distribution : Distribution to sample frequencies."""
 
     if distribution.upper()=='UNIFORM':
-        freq_list = [random.random() for i in range(len(alphabet))]
+        freq_list = [random.random() for i in range(len(allele_space))]
     else:
         raise Exception("Distribution %s isn't supported" % distribution)
     
@@ -42,17 +42,22 @@ def mutate_seq(seq, mu, pl):
 
     # Mutate positions:
     for pos in pos_list:
+
+        orig_allele = seq[pos]  # Original allele
+        
+        # A list of two alleles: the original and a random other allele
+        allele_space = [orig_allele] + random.sample(set(alphabet) - set([orig_allele]), 1)
         
         # Generate new alleles for position
-        orig_alleles = [s[pos] for s in seq_list]
-        freq_list = generate_allele_freq(alphabet, 'UNIFORM')
+        freq_list = generate_allele_freq(allele_space, 'UNIFORM')
         while True:
-            new_alleles = [weighted_random(alphabet, freq_list) for i in range(pl)]
+            
+            new_alleles = [weighted_random(allele_space, freq_list) for i in range(pl)]
                         
             # Repeat if every new allele matches the original allele
-            if not all([x==y for x,y in zip(new_alleles, orig_alleles)]): break
+            if not all([x==orig_allele for x in new_alleles]): break
         
-        if debug: print pos+1, orig_alleles, new_alleles, freq_list
+        if debug: print pos+1, orig_allele, new_alleles, freq_list
 
         # Mutate
         for a, seq in zip(new_alleles, seq_list): seq[pos] = a
