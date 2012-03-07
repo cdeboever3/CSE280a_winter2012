@@ -52,7 +52,7 @@ def mutate_seq(seq, mu, pl):
             # Repeat if every new allele matches the original allele
             if not all([x==y for x,y in zip(new_alleles, orig_alleles)]): break
         
-        if debug: print pos, orig_alleles, new_alleles, freq_list
+        if debug: print pos+1, orig_alleles, new_alleles, freq_list
 
         # Mutate
         for a, seq in zip(new_alleles, seq_list): seq[pos] = a
@@ -68,7 +68,7 @@ def main():
     parser.add_argument('--germ-mu', type=float, required=True, help='Germline mutation rate, i.e. the probability that any haploid in a normal genome differs from the reference at a particular site.')
     parser.add_argument('--som-mu', type=float, required=True, help='Somatic x mutation rate, i.e. the probability that any haploid in a cancerous genome differs from the reference at a particular site.')
     parser.add_argument('--alpha', type=float, nargs='+', required=True, help='Mixing rates of reads.  ')
-    parser.add_argument('--reads', type=int, required=True, help='The number of reads to sample')                      
+    parser.add_argument('--reads', required=True, type=float, help='The number of reads to sample')                      
     parser.add_argument('--e', type=float, default=0.02, help='Sequencing error rate when generating reads (Default: 0.02)')
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--output', required=True, help='Output file')
@@ -85,6 +85,8 @@ def main():
         try: int(x[1])
         except ValueError: raise Exception("Bad format for --k. Use positive integer to denote individual")
         assert len(x)==2, "Bad format for --k.  Enter two-letter genome type descriptors."
+    try: args.reads = int(args.reads)
+    except: raise Exception('Input an integer for --reads')
 
     # Read reference genomic region
     header = open(args.ref).read().split('\n')[0]
@@ -96,45 +98,48 @@ def main():
     # Dict: i --> normal genome of individual i
     normal_dict = dict()
 
-    for i in individuals:
-        if debug: print 'Normal genome for individual %s' %i
+    # Sort genome types by individual indices (used later for deleting
+    # dictionary entries)
+    args.k.sort(key=lambda x: x[1])
 
-        # Construct normal genome of individual
-        seq_list = mutate_seq(ref_seq, args.germ_mu, args.pl)
+    # Construct genomes
+    i = None
+    for d in args.k:
+        
+        # Delete dictionary entry to save memory 
+        if (i is not None) and d[1]!=i: del normal_dict[i]
+
+        t = d[0]  # Type of genome: normal or cancer
+        i = d[1]  # Index of individual        
+        
+        if debug: print ('Cancer' if t=='c' else 'Normal') + ' genome for individual %s' %i
+        # Construct normal genome of individual if it's requested or
+        # needed to construct cancer genome
+        if t=='n' or (t=='c' and not normal_dict.has_key(i)):  
+            seq_list = mutate_seq(ref_seq, args.germ_mu, args.pl)
+            normal_dict[i] = seq_list
+
+        # Construct cancer genome by mutating normal genome of the same individual        
+        if t=='c':
+            seq_list = [mutate_seq(s, args.som_mu, 1)[0] for s in normal_dict[i]]
 
         if debug:
             for j in range(args.pl): print 'Mutations in Haploid %s: %s' % (j, sum([x!=y for x,y in zip(ref_seq, seq_list[j])]))
 
         # Write genome to FASTA file
-        individual_file = 'n%s.fa' % i
         fasta = '\n'.join([format_fasta('%s | haploid %s' % (header,j+1), s) for j, s in enumerate(seq_list)])
-        open(individual_file, 'w').write(fasta)
+        open(d+'.fa', 'w').write(fasta)
+
         
-        normal_dict[i] = seq_list
-        
-    for i in [x[1] for x in args.k if x[0]=='c']:
-        if debug: print 'Cancer genome for individual %s' %i
-
-        # Construct a cancer genome from the normal genom of the same individual
-        seq_list = [mutate_seq(s, args.som_mu, 1)[0] for s in normal_dict[i]]
-
-        if debug:
-            for j in range(args.pl): print 'Mutations in Haploid %s: %s' % (j, sum([x!=y for x,y in zip(ref_seq, seq_list[j])]))
-
-        # Write genome to FASTA file
-        cancer_file = 'c%s.fa' % i
-        fasta = '\n'.join([format_fasta('%s | haploid %s' % (header,j+1), s) for j, s in enumerate(seq_list)])
-        open(cancer_file, 'w').write(fasta)
-
     if os.path.isfile(args.output): os.remove(args.output)  # Remove output file 
 
-    for t, a in zip(args.k, args.alpha):
+    for d, a in zip(args.k, args.alpha):
 
         n = int(a * args.reads)  # Number of reads
         
-        f = t + '.fa'  # Genome file
-        tmp1 = t + '.1.fq'  # File to write first reads
-        tmp2 = t + '.2.fq'  # File to write second reads
+        f = d + '.fa'  # Genome file
+        tmp1 = d + '.1.fq'  # File to write first reads
+        tmp2 = d + '.2.fq'  # File to write second reads
 
         # Sample reads with wgsim
         cmd = 'wgsim -N %s %s %s %s ' % (n, f, tmp1, tmp2)

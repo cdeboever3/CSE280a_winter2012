@@ -50,12 +50,12 @@ def main():
     parser = argparse.ArgumentParser(description='Randomly selects a contiguous region from a genome.  Removes soft masking by making all characters uppercase.')
     parser.add_argument('--genome-dir', required=True, help='Directory of *.fa files of a genome.')
     parser.add_argument('--output', required=True, help='Output FASTA file')
-    parser.add_argument('--sample-length', default=int(1e8), help='Length of region to sample (Default: 100 Mb).')
+    parser.add_argument('--sample-length', default=int(1e8), type=float, help='Length of region to sample (Default: 100 Mb).')
     args = parser.parse_args()
 
     # Check params
     assert os.path.isdir(args.genome_dir), 'Error: %s is not a valid directory' % args.genome_dir
-    try: args.sample_length = int(sample_length)
+    try:  args.sample_length = int(args.sample_length)
     except ValueError: raise Exception('Input an integer for --sample-length')
 
     # Dict: chromosome --> chromosome length
