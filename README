@@ -24,4 +24,4 @@ Extract into directory 'hg19'
 sample_genome.py --genome-dir hg19 --output ref.fa --sample-length 1e7
 
 # Simulate 1e4 reads from the 10Mb region above.  Reads come from an individual's normal and cancer diploid genomes at proportions of 0.25 and 0.75, respectively.  Germline mutation rate is 1e-3 and somatic mut rate is 1e-5.  
-generate_genomes.py --ref ref.fa --k n1 c1 --pl 2 --germ-mu 1e-3 --som-mu 1e-5 --alpha 0.25 0.75 --reads 1e4 --reads1 reads1.fq --reads2 reads2.fq
+generate_genomes.py --ref ref.fa --k n1 c1 --pl 2 --germ-mu 1e-3 --som-mu 1e-5 --alpha 0.25 0.75 --reads 1e4 --reads1 reads.1.fq --reads2 reads.2.fq
