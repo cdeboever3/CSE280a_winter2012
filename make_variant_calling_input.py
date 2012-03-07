@@ -18,7 +18,7 @@ if __name__ == '__main__':
     ### gather command line arguments ###
     parser = argparse.ArgumentParser(description='This script takes two fastq files representing R1 and R2 reads, aligns them to hg19, creates a pileup file, and parses the pileup file to make the tsv file needed for mixed_variant_calling.py.')
     parser.add_argument('R1_reads', help='Input fastq file with R1 reads.')
-    parser.add_argument('R2_reads', help='Input fastq file with R2 reads.')
+    parser.add_argument('R2_reads', default=None, help='Input fastq file with R2 reads.')
     parser.add_argument('-kb', action='store_true', default=keep_bam, help='Keep bam file. Default: {0}'.format(keep_bam))
     parser.add_argument('-kp', action='store_true', default=keep_pileup, help='Keep pileup file. Default: {0}'.format(keep_pileup))
     parser.add_argument('-r', metavar='reference', help='Reference for BWA. Default {0}'.format(reference))
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     R1N         = args.R1_reads
-    R1N         = args.R2_reads
+    R2N         = args.R2_reads
     keep_bam    = args.kb
     keep_pileup = args.kp
     reference   = args.r
@@ -39,9 +39,10 @@ if __name__ == '__main__':
     R2N = os.path.realpath(R2N) # get the input file path
 
     ### make file names ###
-    # bamN = 
-    # pileupN = 
-    # outputN =
+    prefix = '.'.join(R1N.split('.')[1:])
+    bamN = prefix + '.bam'
+    pileupN = prefix + '.pileup'
+    outputN = prefix + '_counts.tsv'
 
     ### align with BWA ###
 
@@ -50,17 +51,17 @@ if __name__ == '__main__':
 
     ### make pileup file ###
 
-    p = subprocess.Popen('samtools view -c {0}{1}.bam'.format(basename,),shell=True)
-    sts = os.waitpid(p.pid, 0)[1] # wait for process to finish
+    # p = subprocess.Popen('samtools view -c {0}{1}.bam'.format(basename,),shell=True)
+    # sts = os.waitpid(p.pid, 0)[1] # wait for process to finish
 
-    ### make input file for mixed_variant_calling.py ###
+    # ### make input file for mixed_variant_calling.py ###
 
-    p = subprocess.Popen('samtools view -c {0}{1}.bam'.format(basename,),shell=True)
-    sts = os.waitpid(p.pid, 0)[1] # wait for process to finish
+    # p = subprocess.Popen('samtools view -c {0}{1}.bam'.format(basename,),shell=True)
+    # sts = os.waitpid(p.pid, 0)[1] # wait for process to finish
 
-    ### remove bam and pileup files ###
+    # ### remove bam and pileup files ###
 
-    if not keep_bam:
-        os.remove(bamN)
-    if not keep_pileup:
-        os.remove(pileupN)
+    # if not keep_bam:
+    #     os.remove(bamN)
+    # if not keep_pileup:
+    #     os.remove(pileupN)
