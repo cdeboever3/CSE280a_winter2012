@@ -1,19 +1,45 @@
 # Chris DeBoever
 # cdeboeve@ucsd.edu
 
-import sys, argparse, pdb, glob, os, subprocess
+import sys, argparse, pdb, glob, os, re
 import numpy as np
 
 ### helper functions ###
+
+p_match = re.compile('\.|,') # regular expression that matches characters that indicate a match in the pileup file
+p_alt = re.compile('[ATCG]',flags=re.IGNORECASE) # regex that matches alternate bases in the pileup file
 
 def parse_plineL(L):
     """
     Parse pileup line into output format
     Input: Pileup line that has been split by \t into a list
-    Output: Number of reads supporting reference, number of reads supporting alternate, separated by \t
+    Output: Separated by \t: chrom, position, ref base, alt base, number of reads supporting reference, number of reads supporting alternate
     """
-    ref = regex
-    alt = regex
+    refL = p_match.findall(L[4])
+    altL = p_alt.findall(L[4])
+    ref = len(refL)
+    alt = len(altL)
+    return '\t'.join([lineL[0],lineL[1],lineL[2],altL[0],str(ref),str(alt)])
+    return '{0}\t{1}'.format(ref,alt)
+
+def filter_site(L,cc):
+    """
+    Decide whether pileup line should be skipped according to various filters
+    Input: Pileup line that has been split by \t into a list and coverage cutoff
+    Output: Boolean indicating whether pileup line should be skipped
+    """
+    skip = False
+    if lineL[2] == 'N': # skip if reference base was an N
+        skip = True
+    if '+' in lineL[4] or '-' in lineL[4] or '^' in lineL[4] or 'N' in lineL[4]: # skip if there is an indel or an uncalled base (indicative of bad quality site)
+        skip = True
+    if int(3) < cc: # skip if the read coverage of the base is below the cutoff
+        skip = True
+    if len(set(p_alt.findall(L[4]))) > 1: # skip if there is more than one alternate base at the site (indicative of bad quality)
+        skip = True 
+    if len(p_alt.findall(L[4])) == 0: # skip if there is no alternate allele present
+        skip = True
+    return skip
 
 if __name__ == '__main__':
 
@@ -35,19 +61,11 @@ if __name__ == '__main__':
     cov_cutoff  = args.c
     debug       = args.d
 
-    line = f.readline().strip()
+    line = inF.readline().strip()
 
     while line != '':
         lineL = line.split('\t')
-        skip = False
-        if lineL[2] == 'N':
-            skip = True
-        if '+' in lineL[4] or '-' in lineL[4] or '^' in lineL[4]:
-            skip = True
-        if int(3) < cov_cutoff:
-            skip = True
-
+        skip = filter_site(lineL,cov_cutoff)
         if not skip:
             print >>outF, parse_plineL(lineL)
-
-        line = f.readline().strip()
+        line = inF.readline().strip()
