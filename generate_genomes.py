@@ -102,7 +102,7 @@ def generate_cancer_genome(normal_genome, mu, distribution='UNIFORM'):
     return seq_list, mutation_dict
 
 def main():
-    description='Generate normal or cancer genomes by mutating a reference sequence.')
+    description='Generate normal or cancer genomes by mutating a reference sequence.'
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('--ref', required=True, help='FASTA file of a contiguous reference sequence')
     parser.add_argument('--k', default=['n1, c1'], nargs='+', required=True, help="List of genome types to generate.  Each genome type is denoted by a two-letter word where the first letter is either 'n' (normal) or 'c' (cancer).  The second letter is a positive integer indicating which individual the genome comes from.  For example, 'n1 c1 n2' means generating three genomes where the first two genomes are a normal and cancer genome from the same individual, and where the third genome is a normal one taken from a different individual.  As another example, 'n1 n2 n3 n4' means generating four normal genomes, each of which comes from a different individual.")
