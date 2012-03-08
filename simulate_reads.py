@@ -9,8 +9,10 @@ def simulate_reads(n, ref_file, tmp_dir):
     tmp1 = tempfile.mkstemp('.fq', dir=tmp_dir)[1]  # File to write first reads
     tmp2 = tempfile.mkstemp('.fq', dir=tmp_dir)[1]  # File to write second reads
 
+    codeD = os.path.dirname(os.path.realpath(__file__)) # directory containing this script and other needed scripts
+
     # Sample reads with wgsim
-    cmd = 'wgsim -N %s %s %s %s ' % (n, ref_file, tmp1, tmp2)
+    cmd = '%s -N %s %s %s %s ' % (os.path.join(codeD, 'wgsim'), n, ref_file, tmp1, tmp2)
     p = subprocess.Popen(cmd, shell=True, stdout=open(os.devnull, 'w'),stderr=subprocess.STDOUT)
     p.wait()
 
