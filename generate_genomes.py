@@ -167,7 +167,7 @@ def main():
             tab = '\n'.join(['%s\t%s\t%s' % (pos, ref_seq[pos], '\t'.join([x+'\tGERM' for x in genotype])) \
                        for pos, genotype in sorted(mutation_dict.items(), key=lambda x:x[0])])
             f = open(os.path.join(args.output_dir,d+'.var'), 'w')
-            f.write('pos(0-based)\tref.allele\t%s\n' % '\t'.join(['hap_%i.allele\thap_%i.type' % (j,j) for j in range(args.pl)]))
+            f.write('pos(0-based)\tref.allele\t%s\n' % '\t'.join(['hap_%i.allele\thap_%i.type' % (j+1,j+1) for j in range(args.pl)]))
             f.write(tab + '\n')
             f.close()
 
@@ -197,7 +197,7 @@ def main():
             tab = '\n'.join(['%s\t%s\t%s' % (pos, ref_seq[pos], '\t'.join(['\t'.join(x) for x in zip(m[pos], t[pos])])) \
                                  for pos in sorted(t.keys())])
             f = open(os.path.join(args.output_dir,d+'.var'), 'w')
-            f.write('pos(0-based)\tref.allele\t%s\n' % '\t'.join(['hap_%i.allele\thap_%i.type' % (j,j) for j in range(args.pl)]))
+            f.write('pos(0-based)\tref.allele\t%s\n' % '\t'.join(['hap_%i.allele\thap_%i.type' % (j+1,j+1) for j in range(args.pl)]))
             f.write(tab + '\n')
             f.close()
 
