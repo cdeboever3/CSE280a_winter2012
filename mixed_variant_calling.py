@@ -39,6 +39,8 @@ def get_altL(fn):
     f = open(fn,'r')
     linesL = [ x.strip().split('\t') for x in f.readlines() ]
     f.close()
+    if lineL[0][0] == '#':
+        lineL = lineL[1:]
     for i in range(len(linesL)):
         if linesL[i][4] == '0': # if the number of reads supporting alternate is 0, we'll switch to 1 so avoid numeric issues
             linesL[i][4] = '1'
@@ -65,6 +67,29 @@ def generate_possible_freqL(pL,sL,er):
     for g in M:
         aL.append(sum(np.array([ int(x) for x in list(g) ])*p_freqL))
     return sorted(list(set(aL+[er,1-er]))) 
+
+def freq_to_genotype(pL,sL,er): 
+    """
+    Creates dict of expected alternate allele frequencies and consistent genotypes
+    Input: ploidy list, frequency (of each subpopulation) list, and sequencing error rate
+    Output: dict of expected alternate allele frequencies and consistent genotypes. Genotypes represented as binary strings in the order of the ploidy list
+    """
+    h = sum(pL) # number of different haplotypes
+    L = [ bin(x)[2:] for x in range(1,2**h-1) ] # range from 1 to 2**h-1 because we don't want 0% or 100% allele freq
+    M = [ '0'*(len(L[-1])-len(x))+x for x in L ]
+    p_freqL = []
+    for i in range(len(pL)):
+        p_freqL += [sL[i]/pL[i]]*pL[i]
+    p_freqA = np.array(p_freqL)
+    sA = np.array(sL)
+    aD = {} # dict where each key is an expected alternate allele frequency and each value is a list of genotypes consistent with this alternate allele frequency
+    for g in M:
+        alt_freq = sum(np.array([ int(x) for x in list(g) ])*p_freqL)
+        if aD.has_key(g):
+            aD[alt_freq].append(g)
+        else:
+            aD[alt_freq] = [g]
+    return aD
     
 def grid_search_parameters(step):
     """
@@ -96,8 +121,7 @@ def estimate_genotype(alt_freq,exp_freqL):
     else:
         return j
 
-if __name__ == '__main__':
-
+def main():
     ### magic variables ###
     # these variables can be set at the command line as well
     ploidyL = [2,2] # the entries in this list are the expected ploidy of each subpopulation. Default is two diploid subpopulations
@@ -150,3 +174,6 @@ if __name__ == '__main__':
     # use best population frequency parameters and walk through sites, assign genotypes, p-values or scores maybe?
 
     print >>sys.stdout, 'log-likelihood\t{0}\npopulation frequencies\t{1}'.format(best_ll,'\t'.join([ str(x) for x in best_par ]))
+
+if __name__ == '__main__':
+    main()
