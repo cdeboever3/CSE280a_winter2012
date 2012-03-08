@@ -14,6 +14,7 @@ if __name__ == '__main__':
     keep_pileup = False
     reference = '/raid/references-and-indexes/hg19/bwa_new/hg19.fa'
     seedlen = 35
+    pileup_ref = '/raid/references-and-indexes/hg19/hg19.fa'
 
     ### gather command line arguments ###
     parser = argparse.ArgumentParser(description='This script takes two fastq files representing R1 and R2 reads, aligns them to hg19, creates a pileup file, and parses the pileup file to make the tsv file needed for mixed_variant_calling.py.')
@@ -23,6 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('-kp', action='store_true', default=keep_pileup, help='Keep pileup file. Default: {0}'.format(keep_pileup))
     parser.add_argument('-r', metavar='reference', default=reference, help='Reference for BWA. Default {0}'.format(reference))
     parser.add_argument('-s', metavar='seedlen', type=int, default=seedlen, help='Seed length for BWA. Default: {0}'.format(seedlen))
+    parser.add_argument('-pr', metavar='pileup_ref', default=pileup_ref, help='faidx indexed reference fasta for pileup. Default {0}'.format(pileup_ref))
     parser.add_argument('-d', action='store_true', help='Enable python debugger.')
     
     args = parser.parse_args()
@@ -42,7 +44,7 @@ if __name__ == '__main__':
     prefix = R1N.split('.')[0]
     bamN = prefix + '.bam'
     pileupN = prefix + '.pileup'
-    outputN = prefix + '_counts.tsv'
+    outN = prefix + '_counts.tsv'
 
     ### align with BWA ###
 
@@ -55,15 +57,15 @@ if __name__ == '__main__':
 
     ### make pileup file ###
 
-    p = subprocess.Popen('samtools view -h -q 30 {0} | samtools view -Sb - | samtools mpileup - > {1}'.format(bamN,pileupN),shell=True)
+    p = subprocess.Popen('samtools view -h -q 30 {0} | samtools view -Sb - | samtools mpileup -f {2} - > {1}'.format(bamN,pileupN,pileup_ref),shell=True)
     sts = os.waitpid(p.pid, 0)[1] # wait for process to finish
 
     ### make input file for mixed_variant_calling.py ###
 
-    # p = subprocess.Popen('samtools view -c {0}{1}.bam'.format(basename,),shell=True)
-    # sts = os.waitpid(p.pid, 0)[1] # wait for process to finish
+    p = subprocess.Popen('python pileup_to_tsv.py {0} {1}'.format(pileupN,outN),shell=True)
+    sts = os.waitpid(p.pid, 0)[1] # wait for process to finish
 
-    # ### remove bam and pileup files ###
+    ### remove bam and pileup files ###
 
     # if not keep_bam:
     #     os.remove(bamN)

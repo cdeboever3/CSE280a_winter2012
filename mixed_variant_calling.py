@@ -40,9 +40,9 @@ def get_altL(fn):
     linesL = [ x.strip().split('\t') for x in f.readlines() ]
     f.close()
     for i in range(len(linesL)):
-        if linesL[i][0] == '0':
-            linesL[i][0] = '1'
-    return zip([ int(x[0])+int(x[1]) for x in linesL ], [ float(x[1])/(float(x[0])+float(x[1])) for x in linesL ]) # each tuple is [freq,num_reads]
+        if linesL[i][4] == '0': # if the number of reads supporting alternate is 0, we'll switch to 1 so avoid numeric issues
+            linesL[i][4] = '1'
+    return zip([ int(x[4])+int(x[5]) for x in linesL ], [ float(x[5])/(float(x[4])+float(x[5])) for x in linesL ]) # each tuple is [freq,num_reads]
 
 # def generate_cancer_possible_freqL(pL,sL,er): 
 # I want to make a function which generates the likely frequencies seen in a cancer sample. This would exclude double-hit mutations (i.e. a single site gains somatic mutations on both chromosomes). This simplifications can only be made in the diploid case, however, because ploidy-variable populations might be weird...
@@ -105,7 +105,7 @@ if __name__ == '__main__':
 
     ### gather command line arguments ###
     parser = argparse.ArgumentParser(description='This script determines the relative frequencies of different populations and estimates the genotypes.')
-    parser.add_argument('infile', help='Input tsv file. First column is number of reads supporting reference allele and second column is number of reads supporting alternate allele.')
+    parser.add_argument('infile', help='Input tsv file. Columns should be: chrom, position, ref base, alt base, number of reads supporting reference, number of reads supporting alternate.')
     parser.add_argument('-pL', default=ploidyL, nargs='+', help='A list of ploidies. Each entry in the list represents the anticipated ploidy of a subpopulation. For instance, if you expect two diploid subpopulations and one triploid subpopulation, enter 2 2 3. Default: {0}'.format(' '.join([str(x) for x in ploidyL])))
     parser.add_argument('-er', default=error_rate, type=float, help='Sequencing error rate. For instance, 0.01 means that 1/100 base calls will be incorrect. Default: {0}'.format(error_rate))
     parser.add_argument('-d', action='store_true', help='Enable python debugger.')

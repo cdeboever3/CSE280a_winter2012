@@ -33,7 +33,7 @@ if __name__ == '__main__':
     subL = [0.25,0.75]
     num_sites = 200
     num_noise_sites = 10
-    error_rate = 0.01
+    error_rate = 0.001
     avg_cov = 50
     std_cov = 10
 
@@ -73,9 +73,9 @@ if __name__ == '__main__':
         alt_freq = random.choice(exp_freqL)
         alt_reads = binomial(cov,alt_freq)
 
-        print >>outF, '{0}\t{1}'.format(cov-alt_reads,alt_reads)
+        print >>outF, 'chr1\t1\tA\tT\t{0}\t{1}'.format(cov-alt_reads,alt_reads)
     for iii in range(num_noise_sites):
         cov = int(round(gauss(avg_cov,std_cov)))
         alt_reads = binomial(cov,error_rate)
 
-        print >>outF, '{0}\t{1}'.format(cov-alt_reads,alt_reads+1)
+        print >>outF, 'chr1\t1\tA\tT\t{0}\t{1}'.format(cov-alt_reads,alt_reads+1)
