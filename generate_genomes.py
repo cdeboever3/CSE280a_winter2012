@@ -102,13 +102,14 @@ def generate_cancer_genome(normal_genome, mu, distribution='UNIFORM'):
     return seq_list, mutation_dict
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate normal or cancer genomes by mutating a reference sequence')
+    description='Generate normal or cancer genomes by mutating a reference sequence.')
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument('--ref', required=True, help='FASTA file of a contiguous reference sequence')
     parser.add_argument('--k', default=['n1, c1'], nargs='+', required=True, help="List of genome types to generate.  Each genome type is denoted by a two-letter word where the first letter is either 'n' (normal) or 'c' (cancer).  The second letter is a positive integer indicating which individual the genome comes from.  For example, 'n1 c1 n2' means generating three genomes where the first two genomes are a normal and cancer genome from the same individual, and where the third genome is a normal one taken from a different individual.  As another example, 'n1 n2 n3 n4' means generating four normal genomes, each of which comes from a different individual.")
     parser.add_argument('--pl', required=True, type=int, help='Genome ploidy')
     parser.add_argument('--germ-mu', type=float, required=True, help='Germline mutation rate, i.e. the probability that any haploid in a normal genome differs from the reference at a particular site.')
     parser.add_argument('--som-mu', type=float, required=True, help='Somatic x mutation rate, i.e. the probability that any haploid in a cancerous genome differs from the reference at a particular site.')
-    parser.add_argument('--output-dir', default=os.getcwd(), help="Directory of output files (Default: current directory)")
+    parser.add_argument('--output-dir', default=os.getcwd(), help="Directory to output FASTA files of generated genomes and log files listing mutations (Default: current directory)")
     args = parser.parse_args()
 
     # Check params
