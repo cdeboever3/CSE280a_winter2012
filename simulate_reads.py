@@ -38,8 +38,7 @@ def main():
     except: raise Exception('Input an integer for --reads')
     assert args.p >=1, 'Enter positive number of threads'
     tmp_dir = tempfile.mkdtemp(dir='.') if (args.tmp_dir is None) else args.tmp_dir    
-
-    print tmp_dir
+    if not os.path.isdir(tmp_dir): os.makedirs(tmp_dir)
 
     # Delete read files if they exist
     if os.path.isfile(args.reads1): os.remove(args.reads1)
