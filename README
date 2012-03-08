@@ -32,4 +32,4 @@ generate_genomes.py --ref ref.fa --k n1 c1 --pl 2 --germ-mu 1e-3 --som-mu 1e-3 -
 # individual's normal and cancer diploid genomes at proportions of
 # 0.25 and 0.75, respectively.  Germline mutation rate is 1e-3 and
 # somatic mut rate is 1e-5.  Parallelize with two processes.
-simulate_reads.py --genomes n1.fa c1.fa --alpha 0.25 0.75 --reads 1e4 --reads1 reads.1.fq --reads2 reads.2.fq -p 2
+simulate_reads.py --genomes n1.fa c1.fa --alpha 0.25 0.75 --reads 1e4 --reads1 reads.1.fq --reads2 reads.2.fq --p 2
