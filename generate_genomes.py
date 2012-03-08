@@ -41,7 +41,7 @@ def mutate_seq(ref, mu, pl, distribution='UNIFORM'):
     """
 
     n = len(ref)               # Sequence length
-    alphabet = list(set(ref))  # Sequence alphabet: A,T,C,G in DNA
+    alphabet = ['A','C','G','T'] # Sequence alphabet: A,T,C,G in DNA
     
     # Number of mutations (drawn from binomial dist)
     num_mut = np.random.binomial(n, mu)

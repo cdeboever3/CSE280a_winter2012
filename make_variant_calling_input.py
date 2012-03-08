@@ -37,6 +37,8 @@ if __name__ == '__main__':
     seedlen     = args.s
     debug       = args.d
 
+    codeD = os.path.dirname(os.path.realpath(__file__)) # directory containing this script and other needed scripts
+
     R1N = os.path.realpath(R1N) # get the input file path
     R2N = os.path.realpath(R2N) # get the input file path
 
@@ -62,7 +64,7 @@ if __name__ == '__main__':
 
     ### make input file for mixed_variant_calling.py ###
 
-    p = subprocess.Popen('python pileup_to_tsv.py {0} {1}'.format(pileupN,outN),shell=True)
+    p = subprocess.Popen('python {2}/pileup_to_tsv.py {0} {1}'.format(pileupN,outN,codeD),shell=True)
     sts = os.waitpid(p.pid, 0)[1] # wait for process to finish
 
     ### remove bam and pileup files ###

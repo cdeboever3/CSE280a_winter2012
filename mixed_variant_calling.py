@@ -125,9 +125,9 @@ if __name__ == '__main__':
 
     altL = get_altL(inN) # a list of number of reads and alternate allele frequencies
 
-    ### grid search ###
+    ### find population frequencies ###
 
-    parL = grid_search_parameters(0.01)
+    parL = grid_search_parameters(0.01) # grid search
     best_par = []
     best_ll = float("-inf")
 
@@ -145,5 +145,8 @@ if __name__ == '__main__':
         if ll > best_ll:
             best_ll = ll
             best_par = par
+
+    ### determine genotypes ###
+    # use best population frequency parameters and walk through sites, assign genotypes, p-values or scores maybe?
 
     print >>sys.stdout, 'log-likelihood\t{0}\npopulation frequencies\t{1}'.format(best_ll,'\t'.join([ str(x) for x in best_par ]))
