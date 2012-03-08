@@ -186,7 +186,6 @@ def main():
                     m[pos] = som_mut_dict[pos]
                     t[pos] = ['SOM' if x!=y else ('GERM' if x!=ref_seq[pos] else 'REF') \
                                   for x,y in zip(germ_mut_dict[pos], som_mut_dict[pos])]
-                    print pos, ref_seq[pos], m[pos], t[pos]
                 elif som_mut_dict.has_key(pos):
                     m[pos] = som_mut_dict[pos]
                     t[pos] = ['SOM' if y!=ref_seq[pos] else 'REF' for y in som_mut_dict[pos]]
