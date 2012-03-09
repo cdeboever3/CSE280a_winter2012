@@ -4,7 +4,7 @@ import argparse, subprocess, random, os, tempfile, threading, multiprocessing, s
 import numpy as np
 from sample_genome import weighted_random, format_fasta
 
-def simulate_reads(n, ref_file, tmp_dir):
+def simulate_reads(n, ref_file, tmp_dir, ram_disk=None):
     tmp_dir = tempfile.gettempdir()  # Temp directory ('/tmp' on UNIX)
     tmp1 = tempfile.mkstemp('.fq', dir=tmp_dir)[1]  # File to write first reads
     tmp2 = tempfile.mkstemp('.fq', dir=tmp_dir)[1]  # File to write second reads
@@ -31,7 +31,8 @@ def main():
     parser.add_argument('--reads1', required=True, help='Output file for the first read of every paired-end.')
     parser.add_argument('--reads2', required=True, help='Output file for the second read of every paired-end.')
     parser.add_argument('--p', default=1, type=int, help='# of parallel processes')
-    parser.add_argument('--tmp-dir', help='Temporary directory to write files (Default: create and use a randomly named directory within the current directory.)')
+    parser.add_argument('--tmp-dir', default='.', help='Temporary directory to write files (Default: create and use a randomly named directory within the current directory.)')
+    parser.add_argument('--ram-disk', help='Temporarily copy the genome files and write read files to this RAM-mounted directory for faster I/O.  If not specified, then genome files are read from their original location.')
     args = parser.parse_args()
 
     # Check params
@@ -39,14 +40,29 @@ def main():
     try: args.reads = int(args.reads)
     except: raise Exception('Input an integer for --reads')
     assert args.p >=1, 'Enter positive number of threads'
-    tmp_dir = tempfile.mkdtemp(dir='.') if (args.tmp_dir is None) else args.tmp_dir    
+    tmp_dir = tempfile.mkdtemp(dir=('.' if (args.tmp_dir is None) else args.tmp_dir))
     if not os.path.isdir(tmp_dir): os.makedirs(tmp_dir)
+
+    print tmp_dir
+
+    # Copy genomes to RAM DISK
+    if args.ram_disk is not None:
+        ram_genomes = [os.path.join(args.ram_disk, os.path.basename(x)) for x in args.genomes]
+        for g, ram_g in zip(args.genomes, ram_genomes):
+            shutil.copy(g, ram_g)
+        genomes = ram_genomes
+        reads1 = os.path.join(args.ram_disk, os.path.basename(args.reads1))
+        reads2 = os.path.join(args.ram_disk, os.path.basename(args.reads2))
+    else:
+        genomes = args.genomes
+        reads1 = args.reads1
+        reads2 = args.reads2
 
     # Delete read files if they exist
     if os.path.isfile(args.reads1): os.remove(args.reads1)
     if os.path.isfile(args.reads2): os.remove(args.reads2)
 
-    for f, a in zip(args.genomes, args.alpha):
+    for f, a in zip(genomes, args.alpha):
 
         n = int(a * args.reads)  # Number of reads
 
@@ -56,15 +72,20 @@ def main():
         
         # Run pool
         pool = multiprocessing.Pool(processes=args.p)
-        tmp_files = pool.map(simulate_reads_star, [(x, f, tmp_dir) for x in n_parts])
+        tmp_files = pool.map(simulate_reads_star, [(x, f, tmp_dir, args.ram_disk) for x in n_parts])
         
         for (tmp1, tmp2), n_i in zip(tmp_files, n_parts):
             # Append reads to output files
-            subprocess.call('cat %s | head -%s >> %s' % (tmp1, n_i*4, args.reads1), shell=True)
-            subprocess.call('cat %s | head -%s >> %s' % (tmp2, n_i*4, args.reads2), shell=True)
+            subprocess.call('cat %s | head -%s >> %s' % (tmp1, n_i*4, reads1), shell=True)
+            subprocess.call('cat %s | head -%s >> %s' % (tmp2, n_i*4, reads2), shell=True)
         
     # Remove temp dir and temp files
     shutil.rmtree(tmp_dir)
+    # Remove RAM copies of genomes and read files
+    if args.ram_disk is not None:
+        for g in genomes: os.remove(g)
+        shutil.move(reads1, args.reads1)
+        shutil.move(reads2, args.reads2)
 
 if __name__=='__main__':
     main()   
