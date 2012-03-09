@@ -39,8 +39,8 @@ def get_altL(fn):
     f = open(fn,'r')
     linesL = [ x.strip().split('\t') for x in f.readlines() ]
     f.close()
-    if lineL[0][0] == '#':
-        lineL = lineL[1:]
+    if linesL[0][0][0] == '#':
+        linesL = linesL[1:]
     for i in range(len(linesL)):
         if linesL[i][4] == '0': # if the number of reads supporting alternate is 0, we'll switch to 1 so avoid numeric issues
             linesL[i][4] = '1'
@@ -85,11 +85,32 @@ def freq_to_genotype(pL,sL,er):
     aD = {} # dict where each key is an expected alternate allele frequency and each value is a list of genotypes consistent with this alternate allele frequency
     for g in M:
         alt_freq = sum(np.array([ int(x) for x in list(g) ])*p_freqL)
-        if aD.has_key(g):
+        if aD.has_key(alt_freq):
             aD[alt_freq].append(g)
         else:
             aD[alt_freq] = [g]
+    aD[er] = ['0'*(len(L[-1])-1) + bin(0)[2:]] # add genotype for 0% alternate allele freq
+    aD[1-er] = [bin(2**h-1)[2:]] # add genotype for 100% alternate allele freq
     return aD
+
+def collapse_genotypes(pL,gL):
+    """
+    Reduces a list of genotypes to distinct genotypes given ploidy
+    Input: ploidy list pL and list of genotypes gL where each genotype is a binary string ordered according to ploidy list
+    Output: genotype list with non-redundant genotypes
+    """
+    if len(gL) < 2:
+        return gL
+    else:
+        uniqueL = [] # list of unique genotypes relative to ploidy
+        for g in gL:
+            s = ''
+            for i in xrange(len(pL)):
+                s += ''.join(sorted(g[0:pL[i]]))
+                g = g[pL[i]:]
+            if s not in uniqueL:
+                uniqueL.append(s)
+        return uniqueL
     
 def grid_search_parameters(step):
     """
@@ -130,6 +151,7 @@ def main():
     ### gather command line arguments ###
     parser = argparse.ArgumentParser(description='This script determines the relative frequencies of different populations and estimates the genotypes.')
     parser.add_argument('infile', help='Input tsv file. Columns should be: chrom, position, ref base, alt base, number of reads supporting reference, number of reads supporting alternate.')
+    parser.add_argument('-o', nargs='?', type=argparse.FileType('w'),default=sys.stdout, help='Output file. Default: standard out')
     parser.add_argument('-pL', default=ploidyL, nargs='+', help='A list of ploidies. Each entry in the list represents the anticipated ploidy of a subpopulation. For instance, if you expect two diploid subpopulations and one triploid subpopulation, enter 2 2 3. Default: {0}'.format(' '.join([str(x) for x in ploidyL])))
     parser.add_argument('-er', default=error_rate, type=float, help='Sequencing error rate. For instance, 0.01 means that 1/100 base calls will be incorrect. Default: {0}'.format(error_rate))
     parser.add_argument('-d', action='store_true', help='Enable python debugger.')
@@ -137,6 +159,7 @@ def main():
     args = parser.parse_args()
     
     inN         = args.infile
+    outF        = args.o
     ploidyL     = args.pL
     error_rate  = args.er
     debug       = args.d
@@ -171,6 +194,14 @@ def main():
             best_par = par
 
     ### determine genotypes ###
+    altD = freq_to_genotype(ploidyL,best_par,error_rate) # dict whose keys are alternate allele frequencies and whose values are lists of consistent genotypes
+    for k in altD.keys():
+        altD[k] = collapse_genotypes(ploidyL,altD[k])
+    exp_freqL = sorted(altD.keys()) 
+
+    for alt in altL:
+        g = altD[estimate_genotype(alt[1],exp_freqL)]
+        print >>outF, g
     # use best population frequency parameters and walk through sites, assign genotypes, p-values or scores maybe?
 
     print >>sys.stdout, 'log-likelihood\t{0}\npopulation frequencies\t{1}'.format(best_ll,'\t'.join([ str(x) for x in best_par ]))

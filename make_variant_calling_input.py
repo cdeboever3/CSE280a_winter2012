@@ -53,13 +53,13 @@ if __name__ == '__main__':
     if debug:
         pdb.set_trace()
 
-    cmd = 'bwa sampe {0} <(bwa aln -t 4 -l {1} {0} {2}) <(bwa aln -t 4 -l {1} {0} {3}) {2} {3} | samtools view -Sb - | samtools sort -o - temp_read_sort > {4}'.format(reference, seedlen, R1N, R2N, bamN)
+    cmd = 'bwa sampe {0} <(bwa aln -t 8 -l {1} {0} {2}) <(bwa aln -t 8 -l {1} {0} {3}) {2} {3} | samtools view -Sb - | samtools sort -o - temp_read_sort > {4}'.format(reference, seedlen, R1N, R2N, bamN)
     p = subprocess.Popen(['/bin/bash', '-c', cmd]) # need to use bash shell for my fancy <() redirects
     sts = os.waitpid(p.pid, 0)[1] # wait for process to finish
 
     ### make pileup file ###
 
-    p = subprocess.Popen('samtools view -h -q 30 {0} | samtools view -Sb - | samtools mpileup -f {2} - > {1}'.format(bamN,pileupN,pileup_ref),shell=True)
+    p = subprocess.Popen('samtools view -h -q 30 {0} | samtools view -Sb - | samtools mpileup -d 5000 -f {2} - > {1}'.format(bamN,pileupN,pileup_ref),shell=True)
     sts = os.waitpid(p.pid, 0)[1] # wait for process to finish
 
     ### make input file for mixed_variant_calling.py ###
