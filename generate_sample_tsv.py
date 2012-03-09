@@ -68,15 +68,18 @@ if __name__ == '__main__':
         pdb.set_trace()
     exp_freqL = generate_possible_freqL(ploidyL,subL)[1:] # we don't want 0 frequency
 
+    pos = 0
     print >>outF, '#chromosome\tposition (0-based)\tref base\talt base\tref coverage\talt coverage'
     for iii in range(num_sites-num_noise_sites):
         cov = int(round(gauss(avg_cov,std_cov)))
         alt_freq = random.choice(exp_freqL)
         alt_reads = binomial(cov,alt_freq)
 
-        print >>outF, 'chr1\t1\tA\tT\t{0}\t{1}'.format(cov-alt_reads,alt_reads)
+        print >>outF, 'chr1\t{2}\tA\tT\t{0}\t{1}'.format(cov-alt_reads,alt_reads,pos)
+        pos += 1
     for iii in range(num_noise_sites):
         cov = int(round(gauss(avg_cov,std_cov)))
         alt_reads = binomial(cov,error_rate)
 
-        print >>outF, 'chr1\t1\tA\tT\t{0}\t{1}'.format(cov-alt_reads,alt_reads+1)
+        print >>outF, 'chr1\t{2}\tA\tT\t{0}\t{1}'.format(cov-alt_reads,alt_reads+1,pos)
+        pos += 1

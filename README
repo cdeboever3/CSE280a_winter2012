@@ -33,3 +33,9 @@ generate_genomes.py --ref ref.fa --k n1 c1 --pl 2 --germ-mu 1e-3 --som-mu 1e-3 -
 # 0.25 and 0.75, respectively.  Germline mutation rate is 1e-3 and
 # somatic mut rate is 1e-5.  Parallelize with two processes.
 simulate_reads.py --genomes n1.fa c1.fa --alpha 0.25 0.75 --reads 1e4 --reads1 reads.1.fq --reads2 reads.2.fq --p 2
+
+# Generate a sample tsv file for input into mixed_variant_calling.py. This is a naive simulation mostly meant for debugging:
+python generate_sample_tsv.py > test.tsv
+
+# Run mixed_variant_calling.py on a properly formatted tsv file
+python mixed_variant_calling.py test.tsv > test_genotypes.tsv

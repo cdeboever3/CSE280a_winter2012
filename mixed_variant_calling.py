@@ -1,7 +1,7 @@
 # Chris DeBoever
 # cdeboeve@ucsd.edu
 
-import sys, argparse, pdb, glob, os
+import sys, argparse, pdb, glob, os, re
 import numpy as np
 from bisect import bisect_left 
 from scipy.stats import binom
@@ -199,12 +199,27 @@ def main():
         altD[k] = collapse_genotypes(ploidyL,altD[k])
     exp_freqL = sorted(altD.keys()) 
 
-    for alt in altL:
-        g = altD[estimate_genotype(alt[1],exp_freqL)]
-        print >>outF, g
-    # use best population frequency parameters and walk through sites, assign genotypes, p-values or scores maybe?
+    print >>outF, '#log-likelihood\t{0}\n#population frequencies\t{1}'.format(best_ll,'\t'.join([ str(x) for x in best_par ]))
 
-    print >>sys.stdout, 'log-likelihood\t{0}\npopulation frequencies\t{1}'.format(best_ll,'\t'.join([ str(x) for x in best_par ]))
+    inF = open(inN,'r')
+    linesL = inF.readlines()
+    inF.close()
+    if linesL[0][0] == '#':
+        linesL = linesL[1:]
+    for i in xrange(len(altL)):
+        alt = altL[i]
+        [chr,pos,refbase,altbase,refcov,altcov] = linesL[i].strip().split('\t')
+        genotypeL = altD[estimate_genotype(alt[1],exp_freqL)] 
+        for g in genotypeL:
+            g = re.sub('0',refbase,g)
+            g = re.sub('1',altbase,g)
+            tempL = [] # each element of this list is the genotype of a population
+            for i in xrange(len(ploidyL)):
+                tempL.append(g[0:ploidyL[i]])
+                g = g[ploidyL[i]:]
+            print >>outF, '\t'.join([chr,pos] + tempL)
+
+    # use best population frequency parameters and walk through sites, assign genotypes, p-values or scores maybe?
 
 if __name__ == '__main__':
     main()
