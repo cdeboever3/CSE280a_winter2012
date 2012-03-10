@@ -19,7 +19,7 @@ def parse_plineL(L):
     altL = p_alt.findall(L[4])
     ref = len(refL)
     alt = len(altL)
-    return '\t'.join([lineL[0],(str(int(lineL[1])-1),lineL[2],altL[0],str(ref),str(alt)]) # subtract one from lineL[1] to make 0-based (pileup is 1-based) coordinate
+    return '\t'.join([lineL[0],(str(int(lineL[1])-1)),lineL[2],altL[0],str(ref),str(alt)]) # subtract one from lineL[1] to make 0-based (pileup is 1-based) coordinate
     return '{0}\t{1}'.format(ref,alt)
 
 def filter_site(L,cc):

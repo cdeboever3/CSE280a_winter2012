@@ -1,11 +1,11 @@
 #!/usr/bin/python
 
-import argparse, subprocess, random, os, tempfile, threading, multiprocessing, shutil, sys
+import argparse, subprocess, random, os, tempfile, threading, multiprocessing, shutil, sys, pdb
 import numpy as np
 from sample_genome import weighted_random, format_fasta
 
 def simulate_reads(n, error, ref_file, tmp_dir, proc_index, debug):
-    tmp_dir = tempfile.gettempdir()  # Temp directory ('/tmp' on UNIX)
+    # tmp_dir = tempfile.gettempdir()  # Temp directory ('/tmp' on UNIX)
     tmp1 = tempfile.mkstemp('.fq', dir=tmp_dir)[1]  # File to write first reads
     tmp2 = tempfile.mkstemp('.fq', dir=tmp_dir)[1]  # File to write second reads
 
@@ -49,13 +49,15 @@ def main():
     assert args.p >=1, 'Enter positive number of threads'
 
     # Make temp dir for intermediate read files
+    if args.debug:
+        print >>sys.stderr, 'tmp_dir: {0}'.format(args.tmp_dir)
     tmp_dir = tempfile.mkdtemp(dir=('.' if (args.tmp_dir is None) else args.tmp_dir))
     if not os.path.isdir(tmp_dir): os.makedirs(tmp_dir)
 
     if args.ram_disk is None:
         genomes = args.genomes
-        reads1 = args.reads1
-        reads2 = args.reads2
+        # reads1 = args.reads1
+        # reads2 = args.reads2
     else:
         # Copy genomes to RAM DISK
         if args.debug: print >> sys.stderr, "Copying genomes over to RAM disk.."
@@ -64,8 +66,11 @@ def main():
         genomes = ram_genomes
         
         # Temporary files to consolidate intermediate read files
-        reads1 = os.path.join(args.ram_disk, os.path.basename(args.reads1))
-        reads2 = os.path.join(args.ram_disk, os.path.basename(args.reads2))
+        # reads1 = os.path.join(args.ram_disk, os.path.basename(args.reads1))
+        # reads2 = os.path.join(args.ram_disk, os.path.basename(args.reads2))
+        
+    reads1 = args.reads1
+    reads2 = args.reads2
 
     # Delete read files if they exist
     if os.path.isfile(args.reads1): os.remove(args.reads1)
@@ -105,9 +110,9 @@ def main():
         if args.debug: print >> sys.stderr, "Removing copies of genomes in RAM folder.."
         # Remove RAM copies of genomes and read files
         for g in genomes: os.remove(g)
-        if args.debug: print >> sys.stderr, "Moving final read file from RAM to desired folder.."
-        shutil.move(reads1, args.reads1)
-        shutil.move(reads2, args.reads2)
+        # if args.debug: print >> sys.stderr, "Moving final read file from RAM to desired folder.."
+        # shutil.move(reads1, args.reads1)
+        # shutil.move(reads2, args.reads2)
 
 
 if __name__=='__main__':
