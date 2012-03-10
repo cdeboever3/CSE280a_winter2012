@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
-import argparse, subprocess, random, os, tempfile, threading, multiprocessing, shutil
+import argparse, subprocess, random, os, tempfile, threading, multiprocessing, shutil, sys
 import numpy as np
 from sample_genome import weighted_random, format_fasta
 
-def simulate_reads(n, ref_file, tmp_dir, ram_disk=None):
+def simulate_reads(n, error, ref_file, tmp_dir, proc_index, debug):
     tmp_dir = tempfile.gettempdir()  # Temp directory ('/tmp' on UNIX)
     tmp1 = tempfile.mkstemp('.fq', dir=tmp_dir)[1]  # File to write first reads
     tmp2 = tempfile.mkstemp('.fq', dir=tmp_dir)[1]  # File to write second reads
@@ -12,9 +12,16 @@ def simulate_reads(n, ref_file, tmp_dir, ram_disk=None):
     codeD = os.path.dirname(os.path.realpath(__file__)) # directory containing this script and other needed scripts
 
     # Sample reads with wgsim
-    cmd = '%s -N %s %s %s %s ' % (os.path.join(codeD, 'wgsim'), n, ref_file, tmp1, tmp2)
-    p = subprocess.Popen(cmd, shell=True, stdout=open(os.devnull, 'w'),stderr=subprocess.STDOUT)
+    cmd = '%s -N %s -e %s %s %s %s ' % (os.path.join(codeD, 'wgsim'), n, error, ref_file, tmp1, tmp2)
+    if debug: print >> sys.stderr, "Process %i: Starting wgsim: %s\n" %(proc_index, cmd)
+    p = subprocess.Popen(cmd, shell=True, stdout=open(os.devnull, 'w'), stderr=subprocess.PIPE)    
+    if debug: print >> sys.stderr, 'Process %i: Waiting for wgsim to finish...' % proc_index
     p.wait()
+    if debug: print >> sys.stderr, 'Process %i: wgsim finished.' % proc_index
+    if debug: print >> sys.stderr, 'Process %i: wgsim stderr:\n' % proc_index, p.communicate()[1]    
+    if p.returncode != 0:
+        print >> sys.stderr, "Process %i: wgsim did not run properly (it's shell exit code was not 0)." % proc_index
+        assert p.returncode==0
 
     return tmp1, tmp2
 
@@ -25,14 +32,14 @@ def main():
     parser = argparse.ArgumentParser(description='Simulate a mixture of reads from multiple genomes using wgsim.')
     parser.add_argument('--genomes', nargs='+', required=True, help='FASTA files of genomes')
     parser.add_argument('--alpha', type=float, nargs='+', required=True, help='Mixing rates of reads (must sum up to 1). The i-th rate corresponds to the i-th genome listed for --genomes')
-    parser.add_argument('--reads', required=True, type=float, help='The number of reads to sample')                      
-    parser.add_argument('--e', type=float, default=0.02, help='Sequencing error rate when generating reads (Default: 0.02)')
-    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--reads', required=True, type=float, help='Number of reads to sample')
+    parser.add_argument('--e', type=float, default=0.02, help='Sequencing error rate when generating reads (default: 0.02)')
     parser.add_argument('--reads1', required=True, help='Output file for the first read of every paired-end.')
     parser.add_argument('--reads2', required=True, help='Output file for the second read of every paired-end.')
-    parser.add_argument('--p', default=1, type=int, help='# of parallel processes')
-    parser.add_argument('--tmp-dir', default='.', help='Temporary directory to write files (Default: create and use a randomly named directory within the current directory.)')
-    parser.add_argument('--ram-disk', help='Temporarily copy the genome files and write read files to this RAM-mounted directory for faster I/O.  If not specified, then genome files are read from their original location.')
+    parser.add_argument('--p', default=1, type=int, help='# of parallel processes (default: 1)')
+    parser.add_argument('--tmp-dir', default='.', help='Temporary directory to write intermediate read files (default: create and use a randomly named directory within the current directory.)')
+    parser.add_argument('--ram-disk', help='A RAM-mounted directory to write temporary copies of the genomes and final reads.')
+    parser.add_argument('--debug', action='store_true', help='Print debug statements to stdout')
     args = parser.parse_args()
 
     # Check params
@@ -40,29 +47,31 @@ def main():
     try: args.reads = int(args.reads)
     except: raise Exception('Input an integer for --reads')
     assert args.p >=1, 'Enter positive number of threads'
+
+    # Make temp dir for intermediate read files
     tmp_dir = tempfile.mkdtemp(dir=('.' if (args.tmp_dir is None) else args.tmp_dir))
     if not os.path.isdir(tmp_dir): os.makedirs(tmp_dir)
 
-    print tmp_dir
-
-    # Copy genomes to RAM DISK
-    if args.ram_disk is not None:
-        ram_genomes = [os.path.join(args.ram_disk, os.path.basename(x)) for x in args.genomes]
-        for g, ram_g in zip(args.genomes, ram_genomes):
-            shutil.copy(g, ram_g)
-        genomes = ram_genomes
-        reads1 = os.path.join(args.ram_disk, os.path.basename(args.reads1))
-        reads2 = os.path.join(args.ram_disk, os.path.basename(args.reads2))
-    else:
+    if args.ram_disk is None:
         genomes = args.genomes
         reads1 = args.reads1
         reads2 = args.reads2
+    else:
+        # Copy genomes to RAM DISK
+        if args.debug: print >> sys.stderr, "Copying genomes over to RAM disk.."
+        ram_genomes = [os.path.join(args.ram_disk, os.path.basename(x)) for x in args.genomes]
+        for g, ram_g in zip(args.genomes, ram_genomes):  shutil.copy(g, ram_g)
+        genomes = ram_genomes
+        
+        # Temporary files to consolidate intermediate read files
+        reads1 = os.path.join(args.ram_disk, os.path.basename(args.reads1))
+        reads2 = os.path.join(args.ram_disk, os.path.basename(args.reads2))
 
     # Delete read files if they exist
     if os.path.isfile(args.reads1): os.remove(args.reads1)
     if os.path.isfile(args.reads2): os.remove(args.reads2)
 
-    for f, a in zip(genomes, args.alpha):
+    for g, a in zip(genomes, args.alpha):
 
         n = int(a * args.reads)  # Number of reads
 
@@ -70,22 +79,36 @@ def main():
         n_parts = [n / args.p for i in range(args.p)]
         n_parts[-1] += n % args.p
         
-        # Run pool
+        # Run process pool
         pool = multiprocessing.Pool(processes=args.p)
-        tmp_files = pool.map(simulate_reads_star, [(x, f, tmp_dir, args.ram_disk) for x in n_parts])
-        
+        tmp_files = pool.map(simulate_reads_star, [(x, args.e, g, tmp_dir, i, args.debug) for i, x in enumerate(n_parts)])
+
+        if args.debug: 
+            sys.stderr.flush()
+            print >> sys.stderr, "All processes finished running wgsim.\nConcatenating intermediate read files.."
+
+        # Concatenate intermediate read files        
         for (tmp1, tmp2), n_i in zip(tmp_files, n_parts):
-            # Append reads to output files
-            subprocess.call('cat %s | head -%s >> %s' % (tmp1, n_i*4, reads1), shell=True)
-            subprocess.call('cat %s | head -%s >> %s' % (tmp2, n_i*4, reads2), shell=True)
-        
-    # Remove temp dir and temp files
-    shutil.rmtree(tmp_dir)
-    # Remove RAM copies of genomes and read files
+            # Lines are filtered with head because sometimes wgsim
+            # produces 1 extra paired end for unknown reasons
+            p = subprocess.Popen('cat %s | head -%s >> %s' % (tmp1, n_i*4, reads1), shell=True)
+            p.wait()
+            assert p.returncode==0, 'Concatenating intermediate read file %s to final read file %s failed' % (tmp1, reads1)
+            p = subprocess.Popen('cat %s | head -%s >> %s' % (tmp2, n_i*4, reads2), shell=True)
+            p.wait()            
+            assert p.returncode==0, 'Concatenating intermediate read file %s to final read file %s failed' % (tmp2, reads2)
+    
+    if args.debug: print >> sys.stderr, "Removing intermediate read files.."
+    shutil.rmtree(tmp_dir)  # Remove temp dir and temp files
+    
     if args.ram_disk is not None:
+        if args.debug: print >> sys.stderr, "Removing copies of genomes in RAM folder.."
+        # Remove RAM copies of genomes and read files
         for g in genomes: os.remove(g)
+        if args.debug: print >> sys.stderr, "Moving final read file from RAM to desired folder.."
         shutil.move(reads1, args.reads1)
         shutil.move(reads2, args.reads2)
+
 
 if __name__=='__main__':
     main()   
