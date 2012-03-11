@@ -11,8 +11,14 @@ def simulate_reads(n, error, ref_file, tmp_dir, proc_index, debug):
 
     codeD = os.path.dirname(os.path.realpath(__file__)) # directory containing this script and other needed scripts
 
+    seed = random.randint(1, 2**16-2)  # Random seed for wgsim
+    if debug: print >> sys.stderr, "Process %i: Random seed to wgsim: %s" % (proc_index, seed)
+
+    # lh3-wgsim-a12da33_copy
+
     # Sample reads with wgsim
-    cmd = '%s -N %s -e %s %s %s %s ' % (os.path.join(codeD, 'wgsim'), n, error, ref_file, tmp1, tmp2)
+    cmd = '%s -e %s -N %s -S %s %s %s %s ' % (os.path.join(codeD, 'wgsim'), error, n, seed, ref_file, tmp1, tmp2)
+    #cmd = '%s -e %s -N %s %s %s %s ' % (os.path.join(codeD, 'lh3-wgsim-a12da33_copy', 'wgsim'), error, n, ref_file, tmp1, tmp2)
     if debug: print >> sys.stderr, "Process %i: Starting wgsim: %s\n" %(proc_index, cmd)
     p = subprocess.Popen(cmd, shell=True, stdout=open(os.devnull, 'w'), stderr=subprocess.PIPE)    
     if debug: print >> sys.stderr, 'Process %i: Waiting for wgsim to finish...' % proc_index
@@ -38,6 +44,7 @@ def main():
     parser.add_argument('--reads2', required=True, help='Output file for the second read of every paired-end.')
     parser.add_argument('--p', default=1, type=int, help='# of parallel processes (default: 1)')
     parser.add_argument('--tmp-dir', default='.', help='Temporary directory to write intermediate read files (default: create and use a randomly named directory within the current directory.)')
+    parser.add_argument('--keep-tmp', action='store_true', help="Don't delete temp directory at the end.")
     parser.add_argument('--ram-disk', help='A RAM-mounted directory to write temporary copies of the genomes and final reads.')
     parser.add_argument('--debug', action='store_true', help='Print debug statements to stdout')
     args = parser.parse_args()
@@ -53,6 +60,8 @@ def main():
         print >>sys.stderr, 'tmp_dir: {0}'.format(args.tmp_dir)
     tmp_dir = tempfile.mkdtemp(dir=('.' if (args.tmp_dir is None) else args.tmp_dir))
     if not os.path.isdir(tmp_dir): os.makedirs(tmp_dir)
+    if args.debug:
+        print >>sys.stderr, 'tmp_dir: {0}'.format(tmp_dir)
 
     if args.ram_disk is None:
         genomes = args.genomes
@@ -90,7 +99,7 @@ def main():
 
         if args.debug: 
             sys.stderr.flush()
-            print >> sys.stderr, "All processes finished running wgsim.\nConcatenating intermediate read files.."
+            print >> sys.stderr, "Genome %s: All processes finished running wgsim.\nConcatenating intermediate read files.." % g
 
         # Concatenate intermediate read files        
         for (tmp1, tmp2), n_i in zip(tmp_files, n_parts):
@@ -104,7 +113,7 @@ def main():
             assert p.returncode==0, 'Concatenating intermediate read file %s to final read file %s failed' % (tmp2, reads2)
     
     if args.debug: print >> sys.stderr, "Removing intermediate read files.."
-    shutil.rmtree(tmp_dir)  # Remove temp dir and temp files
+    if not args.keep_tmp: shutil.rmtree(tmp_dir)  # Remove temp dir and temp files
     
     if args.ram_disk is not None:
         if args.debug: print >> sys.stderr, "Removing copies of genomes in RAM folder.."
