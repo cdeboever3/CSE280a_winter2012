@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     ### magic variables ###
     # these variables can be set at the command line as well
-    cov_cutoff = 10 # coverage cutoff for each site
+    cov_cutoff = 5 # coverage cutoff for each site
 
     ### gather command line arguments ###
     parser = argparse.ArgumentParser(description='This script takes takes a pileup file and parses the pileup file to make the tsv file needed for mixed_variant_calling.py.')
