@@ -1,7 +1,7 @@
 # Chris DeBoever
 # cdeboeve@ucsd.edu
 
-# import sys, argparse, pdb, random
+import sys, argparse, pdb, random
 import sys, pdb, random
 import numpy as np
 from numpy.random import binomial
