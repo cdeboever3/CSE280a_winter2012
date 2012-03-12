@@ -20,39 +20,36 @@ if __name__ == '__main__':
     error_rate = 0.001
     avg_cov = 50
 
-    # parser = argparse.ArgumentParser(description='This script makes a sample input file for the variant calling script by simulating read counts using a binomial distribution and coverage with a Poisson.')
-    # parser.add_argument('to', help='Output file for truth.')
-    # parser.add_argument('-o', nargs='?', type=argparse.FileType('w'),default=sys.stdout, help='Output file. Default: standard out')
-    # parser.add_argument('-pL', default=ploidyL, type=int, nargs='+', help='A list of ploidies. Each entry in the list represents the anticipated ploidy of a subpopulation. For instance, if you expect two diploid subpopulations and one triploid subpopulation, enter 2 2 3. Default: {0}'.format(' '.join([str(x) for x in ploidyL])))
-    # parser.add_argument('-sL', default=subL, type=float, nargs='+', help='List of subpopulation frequencies. Default: {0}'.format(' '.join([ str(x) for x in subL ])))
-    # parser.add_argument('-sl', default=seq_len, type=int, help='Length of sequence to simulate. Default: {0}'.format(seq_len))
-    # parser.add_argument('-gm', default=germ_mu, type=int, help='Germline mutation rate. Default: {0}'.format(germ_mu))
-    # parser.add_argument('-sm', default=soma_mu, type=int, help='Somatic mutation rate. Default: {0}'.format(soma_mu))
-    # parser.add_argument('-er', default=error_rate, type=float, help='Error rate for noise sites. Default: {0}'.format(error_rate))
-    # parser.add_argument('-ac', default=avg_cov, type=int, help='Average coverage. Default: {0}'.format(avg_cov))
-    # parser.add_argument('-d', action='store_true', help='Enable python debugger.')
-    # 
-    # args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='This script makes a sample input file for the variant calling script by simulating read counts using a binomial distribution and coverage with a Poisson.')
+    parser.add_argument('to', help='Output file for truth.')
+    parser.add_argument('-o', nargs='?', type=argparse.FileType('w'),default=sys.stdout, help='Output file. Default: standard out')
+    parser.add_argument('-pL', default=ploidyL, type=int, nargs='+', help='A list of ploidies. Each entry in the list represents the anticipated ploidy of a subpopulation. For instance, if you expect two diploid subpopulations and one triploid subpopulation, enter 2 2 3. Default: {0}'.format(' '.join([str(x) for x in ploidyL])))
+    parser.add_argument('-sL', default=subL, type=float, nargs='+', help='List of subpopulation frequencies. Default: {0}'.format(' '.join([ str(x) for x in subL ])))
+    parser.add_argument('-sl', default=seq_len, type=int, help='Length of sequence to simulate. Default: {0}'.format(seq_len))
+    parser.add_argument('-gm', default=germ_mu, type=int, help='Germline mutation rate. Default: {0}'.format(germ_mu))
+    parser.add_argument('-sm', default=soma_mu, type=int, help='Somatic mutation rate. Default: {0}'.format(soma_mu))
+    parser.add_argument('-er', default=error_rate, type=float, help='Error rate for noise sites. Default: {0}'.format(error_rate))
+    parser.add_argument('-ac', default=avg_cov, type=int, help='Average coverage. Default: {0}'.format(avg_cov))
+    parser.add_argument('-d', action='store_true', help='Enable python debugger.')
+    
+    args = parser.parse_args()
    
-    # truthF                    = args.to
-    # outF            = args.o
-    # ploidyL         = args.pL
-    # subL            = args.sL
-    # seq_len			= args.sl
-    # germ_mu			= args.gm
-    # soma_mu			= args.sm
-    # error_rate      = args.er
-    # avg_cov         = args.ac
-    # debug           = args.d
+    truthN                    = args.to
+    outF            = args.o
+    ploidyL         = args.pL
+    subL            = args.sL
+    seq_len			= args.sl
+    germ_mu			= args.gm
+    soma_mu			= args.sm
+    error_rate      = args.er
+    avg_cov         = args.ac
+    debug           = args.d
 
     if len(ploidyL) > 2:
         print >>sys.stderr, 'Sorry, only two subpopulations are currently supported.'
         sys.exit(1)
 
-    # exp_freqL = generate_possible_freqL(ploidyL,subL,error_rate)
-    seq_len = 1000000
-    outF = sys.stdout
-    truthF = open('truth.txt','w')
+    truthF = open(truthN,'w')
     
     print >>outF, '#chromosome\tposition (0-based)\tref base\talt base\tref coverage\talt coverage'
     print >>truthF, '#log-likelihood\t{0}\n#population frequencies\t{1}'.format(0,'\t'.join([ str(x) for x in subL ]))
