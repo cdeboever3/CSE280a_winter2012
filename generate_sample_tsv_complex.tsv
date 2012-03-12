@@ -59,6 +59,9 @@ if __name__ == '__main__':
         germline = 'AA'
         cancer = 'AA'
         cov = int(round(poisson.rvs(avg_cov)))
+
+        if cov==0: continue  # Continue if base isn't covered
+
 	if random.random() < germ_mu: # germline mutation, hetero or homozygous
 	    alt_freq += random.choice([0.5,1])
             if alt_freq == 1:
