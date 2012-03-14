@@ -111,7 +111,13 @@ def main():
             p = subprocess.Popen('cat %s | head -%s >> %s' % (tmp2, n_i*4, reads2), shell=True)
             p.wait()            
             assert p.returncode==0, 'Concatenating intermediate read file %s to final read file %s failed' % (tmp2, reads2)
-    
+
+        # Remove temp dir and temp files
+        if not args.keep_tmp: 
+            for tmp1, tmp2 in tmp_files:
+                os.remove(tmp1)
+                os.remove(tmp2)
+
     if args.debug: print >> sys.stderr, "Removing intermediate read files.."
     if not args.keep_tmp: shutil.rmtree(tmp_dir)  # Remove temp dir and temp files
     
