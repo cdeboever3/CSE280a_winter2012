@@ -33,7 +33,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', action='store_true', help='Enable python debugger.')
     
     args = parser.parse_args()
-   
+
     truthN                    = args.to
     outF            = args.o
     ploidyL         = args.pL
@@ -76,16 +76,26 @@ if __name__ == '__main__':
         alt_reads = binomial(cov,alt_freq)
 	ref_reads = cov - alt_reads
 	for i in xrange(cov):
-	    if random.random < error_rate:
+#	    if random.random < error_rate:
+	    if random.random() < error_rate:
 		d = random.choice([-1,1])
 		alt_reads += d
-		ref_reads += d
-	    if alt_reads < 0:
-		alt_reads = abs(alt_reads)
-		ref_reads -= alt_reads
-	    if ref_reads < 0:
-		ref_reads = abs(ref_reads)
-		alt_reads -= ref_reads
-        if alt_reads != 0:
+#		ref_reads += d
+		ref_reads -= d
+            # if alt_reads < 0:
+	    #     alt_reads = abs(alt_reads)
+	    #     ref_reads -= alt_reads
+	    # if ref_reads < 0:
+	    #     ref_reads = abs(ref_reads)
+	    #     alt_reads -= ref_reads
+        if alt_reads < 0:
+            ref_reads += alt_reads
+            alt_reads = 0
+        if ref_reads < 0:
+            alt_reads += ref_reads
+            ref_reads = 0
+
+#        if alt_reads != 0:
+        if alt_reads != 0 and ref_reads != 0:
             print >>outF, 'chr1\t{2}\tA\tT\t{0}\t{1}'.format(ref_reads,alt_reads,pos)
             print >>truthF, '\t'.join(['chr1',str(pos),germline,cancer])
