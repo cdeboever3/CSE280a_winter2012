@@ -1,11 +1,11 @@
 import sys, math, os
-from partition_list import partition_list
 import subprocess, multiprocessing
 
 def run(cmd):
     '''Spawn a shell command and wait for it to finish.  Raise an
     exception if the command was not successful, as indicated by a
     non-zero return code.'''
+    print 'Starting command:', cmd
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     p.wait()
     try:
@@ -42,7 +42,7 @@ def make_script(param1_list, param2_list, param1_type, param2_type, folder, core
                 gN = 'c_{0}_a_{1}_genotypes.txt'.format(c,a)
                 tN, rN, gN = [os.path.join(folder,x) for x in [tN, rN, gN]]
                 cmd1 = 'python generate_sample_tsv_complex.tsv {0} -o {1} -ac {2} -sl 1000000 -sL {3} {4}'.format(rN,tN,c,a,1-a)
-                cmd2 = 'python mixed_variant_calling.py {2} -er {0} > {1}'.format(e,gN,tN)            
+                cmd2 = 'python mixed_variant_calling.py {1} -er 0.001 > {0}'.format(gN,tN)
             elif param1_type=='alpha' and param2_type=='error':
                 a, e = param1, param2
                 tN = 'a_{0}_e_{1}.tsv'.format(a,e)
@@ -50,7 +50,7 @@ def make_script(param1_list, param2_list, param1_type, param2_type, folder, core
                 gN = 'a_{0}_e_{1}_genotypes.txt'.format(a,e)
                 tN, rN, gN = [os.path.join(folder,x) for x in [tN, rN, gN]]
                 cmd1 = 'python generate_sample_tsv_complex.tsv {0} -o {1} -sl 1000000 -er {2} -sL {3} {4}'.format(rN,tN,e,a,1-a)
-                cmd2 = 'python mixed_variant_calling.py {1} -er 0.001 > {0}'.format(gN,tN)
+                cmd2 = 'python mixed_variant_calling.py {2} -er {0} > {1}'.format(e,gN,tN)                        
             else:
                 raise Exception('Param types %s and %s not yet supported' % (param1_type, param2_type))
 
@@ -65,8 +65,8 @@ def make_script(param1_list, param2_list, param1_type, param2_type, folder, core
 if __name__=='__main__':
 
     ### Set one of these to be True and the other False
-    alpha_vs_error = True
-    coverage_vs_alpha = False
+    alpha_vs_error = False
+    coverage_vs_alpha = True
 
     assert alpha_vs_error + coverage_vs_alpha == 1
 
@@ -84,9 +84,11 @@ if __name__=='__main__':
         make_script(alphaL, errorL, 'alpha', 'error', folder, cores)
 
     elif coverage_vs_alpha:
-        covL = [2**i for i in range(2, 8)]
-        alpha_step = 0.05
-        alphaL = [round(alpha_step*i, 4) for i in range(1, int(1 / alpha_step))]
+        # covL = [2**i for i in range(2, 8)]
+        # alpha_step = 0.05
+        # alphaL = [round(alpha_step*i, 4) for i in range(1, int(1 / alpha_step))]
+        covL = [50,100]
+        alphaL = [0.3,0.5,0.8]
 
         folder = 'coverage_vs_alpha'
         if not os.path.isdir(folder): os.makedirs(folder)
