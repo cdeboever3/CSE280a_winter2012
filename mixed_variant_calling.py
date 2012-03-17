@@ -147,6 +147,7 @@ def main():
     # these variables can be set at the command line as well
     ploidyL = [2,2] # the entries in this list are the expected ploidy of each subpopulation. Default is two diploid subpopulations
     error_rate = 0.001 # sequencing error rate
+    cov_cutoff = 4 # coverage cutoff for variant sites
 
     ### gather command line arguments ###
     parser = argparse.ArgumentParser(description='This script determines the relative frequencies of different populations and estimates the genotypes.')
@@ -154,6 +155,7 @@ def main():
     parser.add_argument('-o', nargs='?', type=argparse.FileType('w'),default=sys.stdout, help='Output file. Default: standard out')
     parser.add_argument('-pL', default=ploidyL, type=int, nargs='+', help='A list of ploidies. Each entry in the list represents the anticipated ploidy of a subpopulation. For instance, if you expect two diploid subpopulations and one triploid subpopulation, enter 2 2 3. Default: {0}'.format(' '.join([str(x) for x in ploidyL])))
     parser.add_argument('-er', default=error_rate, type=float, help='Sequencing error rate. For instance, 0.01 means that 1/100 base calls will be incorrect. Default: {0}'.format(error_rate))
+    parser.add_argument('-cc', default=cov_cutoff, type=int, help='Coverage cutoff. If the coverage of either the alternate or reference allele is less than or equal to this value, the site will not be considered as a variant site. Default: {0}'.format(cov_cutoff))
     parser.add_argument('-d', action='store_true', help='Enable python debugger.')
     
     args = parser.parse_args()
@@ -171,6 +173,11 @@ def main():
         sys.exit(1)
 
     altL = get_altL(inN) # a list of number of reads and alternate allele frequencies
+    tempL = []
+    for a in altL:
+        if a[0]*a[1] > cov_cutoff and a[0]*(1-a[1]) > cov_cutoff and a[0] > cov_cutoff:
+            tempL.append(a)
+    altL = tempL
 
     ### find population frequencies ###
 
