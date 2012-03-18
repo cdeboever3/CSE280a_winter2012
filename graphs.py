@@ -1,159 +1,188 @@
+"""Tabulates the variant calling results produced by
+enumerate_parameters.py.  The tables can then be graphed in R with
+graphs.R"""
+
 import os, glob
-
-folder_list = ['coverage_vs_alpha', 'alpha_vs_error']
-
-def get_param_1():
-    pass
-
-def get_param_2():
-    pass
-
-for folder in folder_list:
     
-    print folder
+# List of parameters
+covL = [2**i for i in range(2, 8)]
+alpha_step = 0.05
+alphaL = [round(alpha_step*i, 4) for i in range(1, int(1 / alpha_step))]
 
-    predict_files = glob.glob(os.path.join(folder, '*_genotypes.txt'))
-    pileup_files = [x.split('_genotypes.txt')[0] + '.tsv' for x in predict_files]
-    truth_files = [x.split('_genotypes.txt')[0] + '_truth.txt' for x in predict_files]
+param1_list = covL
+param2_list = alphaL
 
+# Output filenames
+folder = 'coverage_vs_alpha'
+base = os.path.join('Figures', folder)
+tp_file = open(base+'.tp.txt', 'w')        # True positives
+fp_file = open(base+'.fp.txt', 'w')        # False positives
+fn_file = open(base+'.fn.txt', 'w')        # False negatives
+tn_file = open(base+'.tn.txt', 'w')        # True negatives
+alpha_file = open(base+'.alpha.txt', 'w')  # Alpha predictions
 
-    # param_1 = 'coverage'
-    # if folder=='coverage_vs_alpha':
-    #     param_2 = 'alpha'
-    # elif folder=='alpha_vs_error':
-    #     param_2 = 'error'
-    # print >>outF, '\t'.join([param_1, param_2, 'alphaError', 'tp', 'fp', 'tn', 'fn'])
-    # print >>outF, '\t'.join([param_1, param_2, 'alphaError', 'tp', 'fp', 'tn', 'fn'])
+tv_file = open(base+'.tv.txt', 'w')        
+tnv_file = open(base+'.tnv.txt', 'w')
+pv_file = open(base+'.pv.txt', 'w')
+pnv_file = open(base+'.pnv.txt', 'w')
 
-    #for predict, pileup, truth in zip(predict_files, pileup_files, truth_files):
+def write_table_header(fh):
+    "Write table header"
+    fh.write('\t' + '\t'.join(map(str,param2_list)) + '\n')
 
-    covL = [2**i for i in range(2, 8)]
-    alpha_step = 0.05
-    alphaL = [round(alpha_step*i, 4) for i in range(1, int(1 / alpha_step))]
+for x in [tp_file, fp_file, fn_file, tn_file, alpha_file, tv_file, tnv_file, pv_file, pnv_file]:
+    write_table_header(x)
 
-    errorL = [0.001, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05]
+### Enumerate over parameters
+fp_list, fn_list, alpha_list = [], [], []
 
-    if folder=='coverage_vs_alpha':
-        param1_list = covL
-        param2_list = alphaL
-    else:
-        param1_list = alphaL
-        param2_list = errorL
+#for a, c, e in param_list:
 
-    fp_file = open(folder + '.fp.txt', 'w')
-    fn_file = open(folder + '.fn.txt', 'w')
-    alpha_file = open(folder + '.alpha.txt', 'w')
-    
-    # Print headers
-    print >>fp_file, '\t' + '\t'.join(map(str,param2_list))
-    print >>fn_file, '\t' + '\t'.join(map(str,param2_list))
-    print >>alpha_file, '\t' + '\t'.join(map(str,param2_list))
-    
-    for param1 in param1_list:
+e = .001
 
-        fp_list, fn_list, alpha_list = [], [], []
+# param1_list = [16]
+# param2_list = [0.7]
+
+def read_genotypes(genotypes_file):
+    """
+    Input: '_genotypes.txt' or '_truth.txt' file.
+    Output: alpha and dictionaries mapping genomic position to cancer and normal genotype
+    """
+
+    lines = [x for x in open(genotypes_file).read().split('\n') if x!='']
+    alpha = [x.split('\t')[1:3] for x in lines if x[0]=='#' and 'population frequencies' in x]
+    assert len(alpha)==1
+    alpha = alpha[0]
+    lines = [x.split('\t') for x in lines if x[0]!='#']
+
+    # dict: genomic position --> genotype of cancer
+    cancer_dict = dict([(x[0]+'.'+x[1], set(x[3].upper())) for x in lines])
+
+    # dict: genomic position --> genotype of normal
+    normal_dict = dict([(x[0]+'.'+x[1], set(x[2].upper())) for x in lines])
+
+    return alpha, cancer_dict, normal_dict
+
+for param1 in param1_list:
+
+    tp_list, fp_list, fn_list, tn_list, alpha_list = [], [], [], [], []
+
+    tv_list, tnv_list, pv_list, pnv_list = [], [], [], []
+
+    for param2 in param2_list:
+
+        c, a = param1, param2
+
+        # Input filenames
+        rN = 'c_{0}_a_{1}_e_{2}_truth.txt'.format(c,a,e)
+        gN = 'c_{0}_a_{1}_e_{2}_genotypes.txt'.format(c,a,e)
+        rN, gN = [os.path.join(folder,x) for x in [rN, gN]]
         
-        for param2 in param2_list:
-            base = '%s_%s_%s_%s' % ('c' if folder=='coverage_vs_alpha' else 'a',
-                                    param1,
-                                    'a' if folder=='coverage_vs_alpha' else'e',
-                                    param2)
-            base = os.path.join(folder, base)
-            truth = base + '_truth.txt'
-            predict = base + '_genotypes.txt'
-            pileup = base + '.tsv'
+        # Read files
+        true_alpha, true_cancer_dict, true_normal_dict = read_genotypes(rN)
+        predict_alpha, predict_cancer_dict, predict_normal_dict = read_genotypes(gN)
 
-            # params = os.path.basename(truth).split('_truth.txt')[0].split('_')
-            # param_1 = float(params[1 + params.index('a')])
-            # if folder=='coverage_vs_alpha':
-            #     param_2 = coverage= float(params[1 + params.index('c')])
-            # elif folder=='alpha_vs_error':
-            #     param_2 = error = float(params[1 + params.index('e')])
+        # False and True positives
+        p,q,r,s = true_cancer_dict, true_normal_dict, predict_cancer_dict, predict_normal_dict
+        fp = len([k for k in r.keys() if r[k]!=s[k] and p[k]==q[k]])
+        tp = len([k for k in r.keys() if r[k]!=s[k] and p[k]!=q[k]])
+        fn = len([k for k in r.keys() if r[k]==s[k] and p[k]!=q[k]])
+        tn = len([k for k in r.keys() if r[k]==s[k] and p[k]==q[k]])
 
-            # dict: genomic position --> actual genotype of cancer
-            truth_lines = [x for x in open(truth).read().split('\n') if x!='']
-            truth_pop_freq = [x.split('\t')[1:3] for x in truth_lines if x[0]=='#' and 'population frequencies' in x]
-            assert len(truth_pop_freq)==1
-            truth_pop_freq = truth_pop_freq[0]
-            truth_lines = [x.split() for x in truth_lines if x[0]!='#']
-            truth_cancer_dict = dict([(x[0]+'.'+x[1], set(x[3].upper())) for x in truth_lines])
-            truth_normal_dict = dict([(x[0]+'.'+x[1], set(x[2].upper())) for x in truth_lines])
+        # # False and True negatives
+        # p,q,r,s = predict_cancer_dict, predict_normal_dict, true_cancer_dict, true_normal_dict
 
-            # dict: genomic position --> predicted genotype of cancer
-            predict_lines = [x for x in open(predict).read().split('\n') if x!='']
-            predict_pop_freq = [x.split('\t')[1:3] for x in predict_lines if x[0]=='#' and 'population frequencies' in x]
-            assert len(predict_pop_freq)==1        
-            predict_pop_freq = predict_pop_freq[0]
-            predict_lines = [x.split() for x in predict_lines if x[0]!='#']
-            predict_cancer_dict = dict([(x[0]+'.'+x[1], set(x[3].upper())) for x in predict_lines])
-            predict_normal_dict = dict([(x[0]+'.'+x[1], set(x[2].upper())) for x in predict_lines])
-            a, b = truth_cancer_dict, truth_normal_dict
-            c, d = predict_cancer_dict, predict_normal_dict
+        # | actual alpha - predicted alpha |
+        alpha_error = abs(float(true_alpha[0]) - float(predict_alpha[0]))
 
-            fp = len([k for k in c.keys() if
-                      c[k]!=d[k] and \
-                          a.has_key(k) and \
-                          a[k]==b[k] \
-                      ])
+        true_var = [k for k in true_cancer_dict.keys() if true_cancer_dict[k]!=true_normal_dict[k]]
+        true_non_var = [k for k in true_cancer_dict.keys() if true_cancer_dict[k]==true_normal_dict[k]]
+    
+        assert len(true_var) + len(true_non_var) == len(true_cancer_dict.keys())
 
-            tp = len([k for k in c.keys() if
-                      c[k]!=d[k] and \
-                          a.has_key(k) and \
-                          a[k]!=b[k] \
-                          ])
+        predict_var = [k for k in predict_cancer_dict.keys() if predict_cancer_dict[k]!=predict_normal_dict[k]]
+        predict_non_var = [k for k in predict_cancer_dict.keys() if predict_cancer_dict[k]==predict_normal_dict[k]]
+        
+        assert len(predict_var) + len(predict_non_var) == len(predict_cancer_dict.keys())
 
-            a, b = predict_cancer_dict, predict_normal_dict
-            c, d = truth_cancer_dict, truth_normal_dict
+        assert tp + fp == len(predict_var)
+        assert tn + fn == len(predict_non_var)
 
-            fn = len([k for k in c.keys() if
-                      c[k]!=d[k] and \
-                          a.has_key(k) and \
-                          a[k]==b[k] \
-                      ])
+#        assert tp + fn == len(predict_var)
+#        assert fp + tn == len(true_non_var)
+        
+        # try:
+        #     assert fp + tn == len(predict_non_var)
+        # except:
+        #     print 'fp', fp
+        #     print 'tp', tp
+        #     print 'fn', fn
+        #     print 'tn', tn
+        #     print 'true var', len(true_var)
+        #     print 'true non var', len(true_non_var)
+        #     print 'predict var', len(predict_var)
+        #     print 'predict non var', len(predict_non_var)
+        #     0 / asdf
 
-            tn = len([k for k in c.keys() if
-                      c[k]==d[k] and \
-                          a.has_key(k) and \
-                          a[k]==b[k] \
-                          ])
+        z = False
+        if z:
+            print
+            print a,c,e
+            print rN
+            print gN
+            print folder, alpha_error, true_alpha, predict_alpha
+            print 'fp', fp
+            print 'tp', tp
+            print 'fn', fn
+            print 'tn', tn
+            print 'true var', len(true_var)
+            print 'true non var', len(true_non_var)
+            print 'predict var', len(predict_var)
+            print 'predict non var', len(predict_non_var)
+            print true_var                                       
 
-            alpha_error = abs(float(truth_pop_freq[0]) - float(predict_pop_freq[0]))
+        tp2 = tp / float(tp + fp) if (tp+fp != 0) else None
+        fp2 = fp / float(tp + fp) if (tp+fp != 0) else None
+        tn2 = tn / float(tn + fn) if (tn+fn != 0) else None
+        fn2 = fn / float(tn + fn) if (tn+fn != 0) else None
 
-            truth_var = len([k for k in truth_cancer_dict.keys() if truth_cancer_dict[k]!=truth_normal_dict[k]])
-            truth_non_var = len([k for k in truth_cancer_dict.keys() if truth_cancer_dict[k]==truth_normal_dict[k]])
-            predict_var = len([k for k in predict_cancer_dict.keys() if predict_cancer_dict[k]!=predict_normal_dict[k]])
-            predict_non_var = len([k for k in predict_cancer_dict.keys() if predict_cancer_dict[k]==predict_normal_dict[k]])
+#        tp,fp,tn,fn=tp2,fp2,tn2,fn2
 
-            # print predict
-            # print folder, coverage, alpha_error, truth_pop_freq, predict_pop_freq
-            # print 'fp', fp
-            # print 'tp', tp
-            # print 'fn', fn
-            # print 'tn', tn
-            # print 'true var', truth_var
-            # print 'true non var', truth_non_var
-            # print 'predict var', predict_var
-            # print 'predict non var', predict_non_var
+        alpha_list.append(alpha_error)
+        tp_list.append(tp)
+        fp_list.append(fp)
+        fn_list.append(fn)
+        tn_list.append(tn)
 
-            tp_rate = tp / float(tp + fp)
-            fp_rate = fp / float(tp + fp)
-            tn_rate = tn / float(tn + fn)
-            fn_rate = fn / float(tn + fn)
+        tv_list.append(len(true_var))
+        tnv_list.append(len(true_non_var))
+        pv_list.append(len(predict_var))
+        pnv_list.append(len(predict_non_var))
 
-            alpha_list.append(alpha_error)
-            fp_list.append(fp_rate)
-            fn_list.append(fn_rate)
-#            fp_list.append(fp)
-#            fn_list.append(fn)
+    print >>tp_file, str(param1) + '\t' + '\t'.join(map(str,tp_list))
+    print >>fp_file, str(param1) + '\t' + '\t'.join(map(str,fp_list))
+    print >>fn_file, str(param1) + '\t' + '\t'.join(map(str,fn_list))
+    print >>tn_file, str(param1) + '\t' + '\t'.join(map(str,tn_list))
+    print >>alpha_file, str(param1) + '\t' + '\t'.join(map(str,alpha_list))
 
-        print >>fp_file, str(param1) + '\t' + '\t'.join(map(str,fp_list))
-        print >>fn_file, str(param1) + '\t' + '\t'.join(map(str,fn_list))
-        print >>alpha_file, str(param1) + '\t' + '\t'.join(map(str,alpha_list))
+    print >>tv_file, str(param1) + '\t' + '\t'.join(map(str,tv_list))
+    print >>tnv_file, str(param1) + '\t' + '\t'.join(map(str,tnv_list))
+    print >>pv_file, str(param1) + '\t' + '\t'.join(map(str,pv_list))
+    print >>pnv_file, str(param1) + '\t' + '\t'.join(map(str,pnv_list))
 
-        fp_file.flush()
-        fn_file.flush()
-        alpha_file.flush()
+    tp_file.flush()
+    fp_file.flush()
+    fn_file.flush()
+    tn_file.flush()
+    alpha_file.flush()
 
-    fp_file.close()
-    fn_file.close()
-    alpha_file.close()
+tp_file.close()
+fp_file.close()
+fn_file.close()
+tn_file.close()
+alpha_file.close()
+
+tv_file.close()
+tnv_file.close()
+pv_file.close()
+pnv_file.close()
