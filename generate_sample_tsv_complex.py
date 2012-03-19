@@ -63,39 +63,52 @@ if __name__ == '__main__':
         if cov==0: continue  # Continue if base isn't covered
 
 	if random.random() < germ_mu: # germline mutation, hetero or homozygous
-	    alt_freq += random.choice([0.5,1])
-            if alt_freq == 1:
+            # alt_freq += random.choice([0.5,1])
+            # if alt_freq == 1:
+            if random.choice([False, True]):
                 germline = 'TT'
                 cancer = 'TT'
             else:
                 germline = 'AT'
                 cancer = 'AT'
 	elif random.random() < soma_mu: # if not germline, somatic (infinite sites)
-	    alt_freq += subL[1]*0.5
+	    # alt_freq += subL[1]*0.5
             cancer = 'AT'
+
+        alt_freq = subL[0] * germline.count('T') * (1./ploidyL[0]) + subL[1] * cancer.count('T') * (1./ploidyL[1])
         alt_reads = binomial(cov,alt_freq)
 	ref_reads = cov - alt_reads
-	for i in xrange(cov):
-#	    if random.random < error_rate:
-	    if random.random() < error_rate:
-		d = random.choice([-1,1])
-		alt_reads += d
-#		ref_reads += d
-		ref_reads -= d
-            # if alt_reads < 0:
-	    #     alt_reads = abs(alt_reads)
-	    #     ref_reads -= alt_reads
-	    # if ref_reads < 0:
-	    #     ref_reads = abs(ref_reads)
-	    #     alt_reads -= ref_reads
-        if alt_reads < 0:
-            ref_reads += alt_reads
-            alt_reads = 0
-        if ref_reads < 0:
-            alt_reads += ref_reads
-            ref_reads = 0
+
+        # Simulate errors and change read counts
+        alt_errors = binomial(alt_reads,error_rate) if (alt_reads!=0) else 0  # Number of sequencing errors on alt_reads
+        ref_errors = binomial(ref_reads,error_rate) if (ref_reads!=0) else 0  # Number of sequencing errors on ref_reads
+        alt_reads = alt_reads - alt_errors + ref_errors
+        ref_reads = ref_reads - ref_errors + alt_errors
+
+# 	for i in xrange(cov):
+# #	    if random.random < error_rate:
+# 	    if random.random() < error_rate:
+# 		d = random.choice([-1,1])
+# 		alt_reads += d
+# #		ref_reads += d
+# 		ref_reads -= d
+#             # if alt_reads < 0:
+# 	    #     alt_reads = abs(alt_reads)
+# 	    #     ref_reads -= alt_reads
+# 	    # if ref_reads < 0:
+# 	    #     ref_reads = abs(ref_reads)
+# 	    #     alt_reads -= ref_reads
+        # if alt_reads < 0:
+        #     ref_reads += alt_reads
+        #     alt_reads = 0
+        # if ref_reads < 0:
+        #     alt_reads += ref_reads
+        #     ref_reads = 0
 
 #        if alt_reads != 0:
         if alt_reads != 0 and ref_reads != 0:
             print >>outF, 'chr1\t{2}\tA\tT\t{0}\t{1}'.format(ref_reads,alt_reads,pos)
             print >>truthF, '\t'.join(['chr1',str(pos),germline,cancer])
+
+        # print >>outF, 'chr1\t{2}\tA\tT\t{0}\t{1}'.format(ref_reads,alt_reads,pos)
+        # print >>truthF, '\t'.join(['chr1',str(pos),germline,cancer])
