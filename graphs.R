@@ -4,33 +4,53 @@ parse.table <- function(filename) {
   return(as.matrix(read.table(filename, check.names=FALSE)))
 }
 
-## tp = parse.table('Figures_email/coverage_vs_alpha.tp.txt')
-## fp = parse.table('Figures_email/coverage_vs_alpha.fp.txt')
-## fn = parse.table('Figures_email/coverage_vs_alpha.fn.txt')
-## tn = parse.table('Figures_email/coverage_vs_alpha.tn.txt')
+folder = 'Figures_original/'
+
+tp = parse.table(paste(folder,'alpha_vs_error.tp.txt',sep=''))
+fp = parse.table(paste(folder,'alpha_vs_error.fp.txt',sep=''))
+fn = parse.table(paste(folder,'alpha_vs_error.fn.txt',sep=''))
+tn = parse.table(paste(folder,'alpha_vs_error.tn.txt',sep=''))
 
 ## tp.rate = tp / (tp + fn)
 ## fp.rate = fp / (tn + fp)
   
-## alpha = abs(parse.table('Figures_email/coverage_vs_alpha.alpha.txt'))
+alpha = abs(parse.table(paste(folder,'alpha_vs_error.alpha.txt',sep='')))
 
-## files <- list(list(table=tp.rate, filename='Figures_email/coverage_vs_alpha.tp_rate', title='True Positive Rate'),
-##               list(table=fp.rate, filename='Figures_email/coverage_vs_alpha.fp_rate', title='False Positive Rate'),
-##               list(table=fp, filename='Figures_email/coverage_vs_alpha.fp', title='# of False Positives'),
-##               list(table=fn, filename='Figures_email/coverage_vs_alpha.fn', title='# of False Negatives'),
-##               list(table=alpha, filename='Figures_email/coverage_vs_alpha.alpha', title='Alpha Error\n = |Actual alpha - Predicted Alpha|'))
+tp = t(tp)
+fp = t(fp)
+fn = t(fn)
+alpha = t(alpha)
 
-alpha = abs(parse.table('Figures_email/coverage_vs_alpha_improved.alpha.txt'))
-files <- list(list(table=alpha, filename='Figures_email/coverage_vs_alpha_improved.alpha',title='Alpha Error\n= |Actual alpha - Predicted alpha|'))
+print(fp)
+print(tp)
+print(alpha)
+
+fn[1,1]=.001
+
+files <- list(#list(table=tp.rate, filename=paste(folder,'alpha_vs_error_tp_rate',sep=''), title='True Positive Rate'),
+              #list(table=fp.rate, filename=paste(folder,'alpha_vs_error_fp_rate',sep=''), title='False Positive Rate'),
+              list(table=fp, filename=paste(folder,'alpha_vs_error_fp',sep=''), title='# of False Positives'),
+              list(table=fn, filename=paste(folder,'alpha_vs_error_fn',sep=''), title='# of False Negatives'),
+              list(table=alpha, filename=paste(folder,'alpha_vs_error_alpha',sep=''), title='Alpha Error\n = |Actual alpha - Predicted Alpha|'))
+
+#alpha = abs(parse.table(paste(folder,'alpha_vs_error_improved.alpha.txt',sep='')))
+#files <- list(list(table=alpha, filename=paste(folder,'alpha_vs_error_improved.alpha',sep=''),title='Alpha Error\n= |Actual alpha - Predicted alpha|'))
 
 for (i in seq(along=files)) {
   graph.table = files[[i]][['table']]
   graph.filename = files[[i]][['filename']]
   graph.title = files[[i]][['title']]
+
+  print(graph.table)
+  png(paste(graph.filename,'.png',sep=''), width=480,height=480)
+#  pdf(paste(graph.filename,'.png',sep=''))
+
+  ## heatmap.2(graph.table, Rowv=NA, Colv=NA, dendrogram="none", xlab='alpha (fraction of normal genome)', ylab='Average Coverage', hline=c(), vline=c(), trace="none",key=TRUE, lmat=rbind( c(2,3,0,0),c(0,4,0,0),c(0,1,1,1)), lhei=c(0.5,1,3.0), lwid=c(0.5,2,2,2),cexRow=1.5,cexCol=1.5)
+
+  heatmap.2(graph.table, Rowv=NA, Colv=NA, dendrogram="none", xlab='Seq Error Rate', ylab='alpha (fraction of normal genome)', hline=c(), vline=c(), trace="none",key=TRUE, lmat=rbind( c(2,3,0,0),c(0,4,0,0),c(0,1,1,1)), lhei=c(0.5,1,3.0), lwid=c(0.5,2,2,2),cexRow=1.5,cexCol=1.5)
+
   
-  png(paste(graph.filename,'.png',sep=''))
-  heatmap.2(graph.table, Rowv=NA, Colv=NA, dendrogram="none", xlab='alpha (fraction of normal genome)', ylab='Average Coverage', hline=c(), vline=c(), trace="none")
-  title(graph.title)
+#  title(main=graph.title, font.main=30)
   dev.off()
 }  
 
