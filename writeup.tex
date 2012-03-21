@@ -1,0 +1,271 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage,amsmath,setspace,graphicx,enumerate,amsfonts}
+
+\usepackage{subfig}
+\usepackage{graphicx}
+
+\onehalfspace
+
+\title{A Maximum Likelihood Approach to Calling SNVs in Mixed Samples}
+\author{Chris Deboever, Michael Yu}
+\date{CSE280A, March 20, 2012}
+
+\begin{document}
+
+%\begin{align*}
+%P(X|\theta) = P(X|\alpha,g_1,\dots,g_n)
+%\end{align*}
+
+\maketitle
+
+\section{Problem Formulation}
+
+Consider noisy observed coverage data from two mixed diploid genomes 
+\begin{align}
+X = \{ (r_1,a_1),(r_2,a_2),\dots,(r_n,a_n) \},
+\end{align} 
+where $r_i$ and $a_i$ represent the number of reads supporting the reference and alternate bases, respectively, at variant site $i$. We wish to determine genotype $g_i$ at each variant site and the mixture rate $\alpha$ of the two diploid genomes. We will use a maximum likelihood approach to estimate $g_1,\dots,g_n$ and $\alpha$. The problem can be formulated as follows:
+
+\textbf{Input:} $X = \{ (r_1,a_1),(r_2,a_2),\dots,(r_n,a_n) \}; r_i,a_i\in \mathbb{N}$ where $r_i$ and $a_i$ represent the number of reads supporting the reference and alternate bases, respectively, at variant site $i$. Expected error rate for a base call $R$.
+
+\textbf{Objective:} Find $\alpha$ and $g_1,\dots,g_n$ that maximize the log-likelihood $\mathcal{L}(\alpha,g_1,\dots,g_n|X)$.
+
+\textbf{Constraints:} The data are generated from two distinct diploid genomes. $\alpha$ represents the percentage of the reads derived from one genome and $1-\alpha$ is the percentage of the reads derived from the the other genome. A variant site is defined as a site in the genome where at least one read contains an alternate base. We take the infinite sites assumption to be true.
+
+\textbf{Output:} $\alpha \in (0,1)$ and $g_1,\dots,g_n$. Each $g_i$ indicates the genotypes for the $\alpha$ and $1-\alpha$ genomes; for each genome, a genotype at a variant site can be homozygous reference, homozygous alternate, and heterozygous for one alternate allele.
+
+
+
+\section{ First Approach}
+\label{sec:first-approach}
+
+We have implemented a maximum-likelihood approach that estimates $\alpha$ and the genotype $g_i$ at each variant site $i$. We generate expected alternate allele frequencies for a particular value of $\alpha$ and calculate the likelihood of the data under these expected frequencies. The process is described here in detail.  This is the approach that was presented in class.
+
+\subsection{Possible alternate allele frequencies $F_\alpha$}
+Given an $\alpha$ representing the mixture rate of two diploid genomes, we can generate the possible alternate allele frequencies $F_\alpha$ that we expect to observe. For instance, when $\alpha=0.25$, the possible alternate allele frequencies are 
+\begin{align}
+F_{0.25}=\{0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1\}. 
+\end{align}
+In most cases, a particular alternate allele frequency implies a genotype for both genomes. With $\alpha=0.25$, the frequency 0.125 implies that the $\alpha$ genome is heterozygous and the $1-\alpha$ genome is homozygous reference. Using this observation, we can simplify the problem of finding the genotype $g_i$ at each variant position to assigning an expected allele frequency $e_i$ to each site. 
+
+To account for the error rate $R$, we change the frequencies 0 and 1 to $R$ and $1-R$ respectively. This models the expected alternate allele frequency for homozygous reference or alternate in both genomes. In the example above, $F_\alpha$ would become
+\begin{align}
+F_{0.25}=\{0.001, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 0.999\}. 
+\end{align}
+for an error rate $R=0.001$.
+
+\subsection{Expected alternate allele frequency $e_i$}
+\label{ei}
+Given $F_\alpha$, we next determine the expected alternate allele frequency $e_i$ at each variant site $i$. If we let
+\begin{align}
+f_i = \frac{a_i}{a_i+r_i},
+\end{align}
+be the observed frequency of the alternate allele in the sample then the expected observed frequency is given by
+\begin{align}
+e_i = \underset{v \in F_\alpha}{\operatorname{argmin}} | f_i - v |.
+\end{align}
+
+\subsection{Log-likelihood calculation at site $i$ given $\alpha$}
+\label{sec:likelihood}
+We assume that the count of alternate allele base calls at a particular variant site $i$ is modeled by a binomial distribution where the probability of observing a read that supports the alternate base is the frequency of that allele in the sample. 
+Given an expected alternate allele frequency $e_i$, the probability of observing $a_i$ alternate base calls in $a_i+r_i$ trials is given by the binomial probability mass function
+\begin{align}
+\text{Binom}(a_i;a_i+r_i,e_i) = {a_i+r_i \choose a_i} \cdot e_i^{a_i} \cdot (1-e_i)^{r_i}.
+\end{align}
+%% Given an expected alternate allele frequency $e_i$, the probability of observing $a_i$ alternate base calls and $r_i$ reference base calls is
+%% \begin{align}
+%% P(a_i, r_i \mid e_i) = {a_i+r_i \choose a_i} \cdot e_i^{a_i} \cdot (1-e_i)^{r_i}.
+%% \end{align}
+
+Given the estimated allele frequency $e_i$, we can compute the log-likelihood at the site $i$ as
+\begin{align}
+\mathcal{L}_i(\alpha) = \ln{\left[ {a_i+r_i \choose a_i} \cdot e_i^{a_i} \cdot (1-e_i)^{r_i}\right]}.
+\end{align}
+
+\subsection{Log-likelihood calculation with unknown $\alpha$}
+\label{sec:likelihood-unknown-alpha}
+Given a particular $\alpha$, we can calculate the log-likelihood of $\alpha,g_1,\dots,g_n$ as 
+\begin{align}
+\mathcal{L}(\alpha) = \sum_i \mathcal{L}_i(\alpha).
+\end{align}
+
+To determine $\alpha$, we perform a grid search over possible values $\alpha = \{0.01,0.02,\dots,0.99\}$. The $\alpha,g_1,\dots,g_n$ with the maximum log-likelihood are returned as estimates of the mixture rate and genotypes.
+
+\subsection{Time and space complexity}
+This approach is time and space efficient for two mixed genomes. Enumerating the possible allele frequencies is exponential in the number of genomes but this is not an issue with two genomes. Calculating the log-likelihood involves evaluating the binomial mass function at each variant site $i$ for all $\alpha$. The algorithm thus scales linearly with the number of variant sites and possible $\alpha$ values. Our approach could be extended to more than two genomes but would likely require a better search method over the $\alpha$ parameter space since $k$ genomes will have $k-1$ free variables that describe the percent of each genome in the sample.
+
+
+\section{Second Approach}
+\label{sec:second-approach}
+We also implemented a second approach to computing the likelihood of
+$\alpha$.  This approach was developed after the class presentation.
+
+The main algorithmic difference between this approach versus the first
+is that it incorporates all possible genotypes (and their implicit
+frequencies of the alternate allele) in the likelihood calculation for
+a particular $\alpha$.  On the other hand, the first approach is
+simpler because it only incorporates the closest possible frequency
+$e_i$ (section \ref{ei}) into the likelihood calculation.  Moreover,
+as will be described below, the second approach more rigorously models
+the number of sequencing errors at a site as a binomial random
+variable.
+
+\subsection{Extra assumptions and preliminaries}
+Of the two diploid genomes in consideration, we assume that one of
+them is a ``normal'' genome, derived from a reference genome but
+differing at germline mutation sites occurring at rate $\mu_g$, and the
+other is a ``cancer'' genome, derived from the ``normal'' genome but
+differing at somatic mutations sites occurring at rate $\mu_s$.  A Let
+$g_i^{nor}$ and $g_i^{can}$ denote the genotype of the normal and
+cancer genomes, respectively, at site $i$.  Let $A$ and $B$ denote the
+reference and alternate alleles, respectively, for any site.  The
+prior distribution of $g_i^{nor}$ is
+\begin{align*}
+\Pr(g_i^{nor}=AA) &= \Pr(\text{no som. mut.}) = 1 - \mu_g \\
+\Pr(g_i^{nor}=AB) &= \Pr(g_i^{nor}=AB | g_i^{nor} \not= AA)\Pr(\text{som. mut.}) = 0.5 \mu_g \\
+\Pr(g_i^{nor}=BB) &= \Pr(g_i^{nor}=BB | g_i^{nor} \not= AA)\Pr(\text{som. mut.}) = 0.5 \mu_g
+\end{align*}
+where we've made the simple assumption that $\Pr(g_i^{nor}=AB |
+g_i^{nor} \not = AA)$ and $\Pr(g_i^{nor}=BB | g_i^{nor} \not = AA)$
+  are equal at 0.5.  
+
+Let $g_i=(g_i^{nor},g_i^{can})$ denote the pair of genotypes at site
+$i$.  If we assume that germline and somatic mutations cannot occur at
+the same site, then the possible genotype pairs is $G =
+(AA,AA)$,$(AA,AB)$,$(AB,AB)$,$(BB,BB)$.  We can compute $\Pr(g_i)$ as
+$\Pr(g_i^{can} \mid g_i^{nor}) \Pr(g_i^{nor})$ where
+\begin{align*}
+\Pr(g_i^{can} \mid g_i^{nor}) =
+\begin{cases}
+\mu_s & g_i^{can} \not = g_i^{nor} \\
+1 - \mu_s & g_i^{can} = g_i^{nor}
+\end{cases}
+\end{align*}
+Thus we have
+\begin{align*}
+\Pr(g_i=(AA,AA))&=(1 - \mu_g)(1 - \mu_s) \\
+\Pr(g_i=(AA,AB))&=(1 - \mu_g)\mu_s \\
+\Pr(g_i=(AB,AB))&=0.5\mu_g(1 - \mu_s) \\
+\Pr(g_i=(BB,BB))&=0.5\mu_g(1 - \mu_s)
+\end{align*}
+Define the function $h$ to be the frequency of the alternate allele in
+a genotype.  That is, $h(AA)=0$, $h(AB)=0.5$, and $h(BB)$=1.
+
+\subsection{Log-likelihood of $\alpha$}
+As in section~\ref{sec:likelihood}, we model the number of alternate
+reads as a binomial random variable.  Moreover, we also model the
+number of sequencing errors at a particular variant site $i$ to be a
+binomial random variable where the coverage of the site is the number
+of trials and the probability of an error is $R$.  We assume that if there is a sequencing error in a read at the position that maps to site $i$, then read's support
+for the alternate versus the reference allele is reversed.  That is, if
+the read would have supported the alternate allele had there been no
+sequencing error, then because of the error it will actually supports the reference allele, and vice versa.
+
+Given a mixture rate $\alpha$ and a genotype pair
+$g_i=(g_i^{nor},g_i^{can})$, the probability of having $a_i$ base
+calls supporting the alternate allele and $r_i$ base calls supporting
+the reference allele is
+\begin{align*}
+Pr(a_i, r_i \mid \alpha, g_i) &= \sum_{k=0}^{N-a_i} \text{Binom}(a_i + k ; a_i + r_i, h(g_i, \alpha)) \text{Binom}(k ; a_i + r_i, R) \\
+& \qquad + \sum_{k=1}^{a_i}\text{Binom}(a_i -k ; a_i + r_i, \alpha, h(g_i, \alpha)) \text{Binom}(k ; a_i + r_i, R)
+\end{align*}
+
+Finally given a mixture rate $\alpha$, we can now formulate the
+probability of having $a_i$ calls supporting the alternate and $r_i$
+calls supporting the reference as
+\[
+\Pr(a_i, r_i \mid \alpha) = \sum_{g_i \in G} \Pr(a_i, r_i \mid \alpha, g) \Pr(g_i).
+\]
+The log-likelihood of $\alpha$ is given by
+\[
+\mathcal{L}(\alpha) = \sum_i \ln \left( \Pr(a_i, r_i \mid \alpha) \right)
+\]
+
+\subsection{Estimating $\alpha$ and genotypes}
+The maximum likelihood estimator $\alpha_{MLE}$ is given by
+\[
+\alpha_{MLE} = \underset{\alpha \in [0,1]}{\operatorname{argmax}}~\mathcal{L}(\alpha)
+\]
+As in section~\ref{sec:likelihood-unknown-alpha}, we can estimate
+$\alpha_{MLE}$ with a grid search.  Given $\alpha_{MLE}$, we also use
+maximum likelihood estimation to infer the genotypes $g_i$ at a
+variant site $i$
+\begin{align*}
+g_i = \underset{g \in G}{\operatorname{argmax}} \Pr(a_i, r_i \mid \alpha_{MLE}, g_i)
+\end{align*}
+
+\section{Simulating data}
+
+We were unable to use wgsim to generate large number of reads from a 100 million base pair genome. Our read sampling strategy worked for low coverage, but some part of the pipeline could not scale to reasonable coverage. We instead implemented another approach to simulate data. This method took as input the average coverage desired $c_{avg}$ and chose the coverage at each base in the genome by sampling from a Poisson with mean $c_{avg}$. We also defined a germline mutation rate $\mu_g = 0.001$ that dropped heterozygous or homozygous mutation with equal chance on the ``normal'' and ``cancer'' genomes. A somatic mutation rate $\mu_s = 0.00001$ was used to drop additional heterozygous mutations on the ``cancer'' genome. For each site, we calculated the number of reads supporting reference or alternate using the known genotype and $\alpha$, then sampled from a binomial with error rate $R$ for sequencing errors and altered the number of reads supporting reference/alternate according to the noise from this binomial.
+
+\section{Filtering variant sites}
+
+As discussed earlier, we included the expected error rate in the list of possible alternate allele frequencies by adding and subtracting the error rate $R$ from the frequencies 0 and 1 respectively. For instance, when $\alpha=0.25$ and $R=0.001$, the expected alternate allele frequencies are
+\begin{align}
+F_{0.25}=\{0.001, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 0.999\}. 
+\end{align}
+The problem with this approach is that for average coverage around 100, a sequencing error results in an alternate allele frequency of 0.01. Given our initial approach of choosing the expected alternate allele frequency with
+\begin{align}
+e_i = \underset{v}{\operatorname{argmin}} | f_i - v |, v \in F_\alpha,
+\end{align}
+the error frequency 0.001 was rarely chosen because an error caused a frequency of 0.01. To account for this, we decided to filter out all sites that did not have at least four reads supporting alternate or four reads supporting reference. This filtering was done for both our first and second approaches.  Sites that do not fit this criteria are assumed to be homozygous reference or homozygous alternate for both genomes. This approach helped avoid many false positives and led to better estimates of $\alpha$. 
+
+\section{Results}
+\begin{figure}[H]
+  \label{fig:ca_first}
+  \centering
+  \subfloat[$\big|\text{Predicted}~\alpha - \text{True}~\alpha \big|$]{\includegraphics[width=0.33\textwidth]{Figures_original/coverage_vs_alpha_alpha.png}} 
+  \subfloat[False Positives]{\includegraphics[width=0.33\textwidth]{Figures_original/coverage_vs_alpha_fp.png}} 
+  \subfloat[False Negatives]{\includegraphics[width=0.33\textwidth]{Figures_original/coverage_vs_alpha_fn.png}}
+  \caption{Varying average coverage and $\alpha$, first approach.}
+\end{figure}
+\begin{figure}[H]
+  \label{fig:ca_second}
+  \centering
+  \subfloat[$\big|\text{Predicted}~\alpha - \text{True}~\alpha \big|$]{\includegraphics[width=0.33\textwidth]{Figures_improved/coverage_vs_alpha_alpha.png}} 
+  \subfloat[False Positives]{\includegraphics[width=0.33\textwidth]{Figures_improved/coverage_vs_alpha_fp.png}} 
+  \subfloat[False Negatives]{\includegraphics[width=0.33\textwidth]{Figures_improved/coverage_vs_alpha_fn.png}}
+  \caption{Varying average coverage and $\alpha$, second approach.}
+\end{figure}
+\begin{figure}[H]
+  \label{fig:ae_first}
+  \centering
+  \subfloat[$\big|\text{Predicted}~\alpha - \text{True}~\alpha \big|$]{\includegraphics[width=0.33\textwidth]{Figures_original/alpha_vs_error_alpha.png}} 
+  \subfloat[False Positives]{\includegraphics[width=0.33\textwidth]{Figures_original/alpha_vs_error_fp.png}} 
+  \subfloat[False Negatives]{\includegraphics[width=0.33\textwidth]{Figures_original/alpha_vs_error_fn.png}}
+  \caption{Varying $\alpha$ and sequencing error rate $R$, first approach.}
+\end{figure}
+\begin{figure}[H]
+  \label{fig:ae_second}
+  \centering
+  \subfloat[$\big|\text{Predicted}~\alpha - \text{True}~\alpha \big|$]{\includegraphics[width=0.33\textwidth]{Figures_improved/alpha_vs_error_alpha.png}} 
+  \subfloat[False Positives]{\includegraphics[width=0.33\textwidth]{Figures_improved/alpha_vs_error_fp.png}} 
+  \subfloat[False Negatives]{\includegraphics[width=0.33\textwidth]{Figures_improved/alpha_vs_error_fn.png}}
+  \caption{Varying $\alpha$ and sequencing error rate $R$, second approach.}
+\end{figure}
+
+We ran both the first and second approaches with an error rate $R=0.001$
+and with different combinations of $\alpha$, from 0.5 to 0.95 in
+increments of 0.05, and average coverage, from 4 to 128 in increasing
+powers of 2 (Figures 1 and 2).  We measured performance with three
+values: a) the absolute difference between the predicted and true
+alpha, b) the number of false positives, i.e. sites predicted to be
+somatic mutations but actually weren't, and c) the number of false
+negatives, i.e. the sites predicted to not be somatic mutations but
+actually were.
+
+Overall, the second approach performs much better than the first
+approach.  The first approach predicts $\alpha$ reasonably well only
+when the true $\alpha$ is around around 0.35 to 0.55, but the second
+approach predicts $\alpha$ very well for almost all values of the true
+$\alpha$ when the average coverage is at least 32.  Moreover, the
+first approach suffers from a very high false positive rate at
+coverages above 16, while the second approach maintains a low false
+positive rate for all parameters.
+
+We also ran the approaches with an average coverage of 64 and with
+different combinations of $\alpha$, from 0.05 to 0.95 in increments of
+0.05, and error rate $R$, 0.001, 0.01, or 0.02 (Figures 3 and 4).  Both
+approaches break down when the error rate is at higher error rates of
+0.01 and 0.02.
+\end{document}
