@@ -26,7 +26,7 @@ def run_cmd(cmd, debug):
 def run_cmd_star(x):
     return run_cmd(*x)
 
-def make_script(param_list, folder, cores, debug=True):
+def run_all(param_list, folder, cores, debug=True):
     """
     Run generate_sample_tsv_complex.tsv and mixed_variant_calling.py
     for all parameters in <param_list>.  Output files to
@@ -46,12 +46,17 @@ def make_script(param_list, folder, cores, debug=True):
         tN, rN, gN = [os.path.join(folder,x) for x in [tN, rN, gN]]
             
         # Create command
-        # cmd1 = 'python generate_sample_tsv_complex.py {0} -o {1} -ac {2} -sl 1000000 -sL {3} {4} -er {5}'.format(rN,tN,c,a,1-a,e)
-        # cmd2 = 'python mixed_variant_calling.py {2} -er {0} > {1}'.format(e,gN,tN)                        
-        cmd1 = 'python generate_sample_tsv_complex_fork.py {0} -o {1} -ac {2} -sl 1000000 -sL {3} {4} -er {5}'.format(rN,tN,c,a,1-a,e)
-        cmd2 = 'python mixed_variant_calling_fork.py {2} -o {1} -er {0}'.format(e,gN,tN)                        
+        cmd1 = 'python generate_sample_tsv_complex.py {0} -o {1} -ac {2} -sl 1000000 -sL {3} {4} -er {5}'.format(rN,tN,c,a,1-a,e)
 
-        cmd = cmd1 + ' ; ' + cmd2  # Concatenate commands
+        if args.improved:
+            # Use improved algorithm
+            cmd2 = 'python mixed_variant_calling_fork.py {2} -o {1} -er {0}'.format(e,gN,tN)                        
+        else:
+            # Use original algorithm
+            cmd2 = 'python mixed_variant_calling.py {2} -o {1} -er {0}'.format(e,gN,tN)                        
+
+        cmd = cmd2
+#        cmd = cmd1 + ' ; ' + cmd2  # Concatenate commands
 
         cmd_list.append(cmd)
 
@@ -62,30 +67,40 @@ def make_script(param_list, folder, cores, debug=True):
 
 if __name__=='__main__':
 
-    # Determines which parameters to vary
-    switch = False
+    ### Vary alpha and error rate
+    output_folder = 'alpha_vs_error'
+    errorL = [0.001, 0.01, 0.02, 0.05]
+    covL = [64]
+    
+    ### Vary coverage and alpha
+    # output_folder = 'coverage_vs_alpha'
+    # errorL = [.001]
+    # covL = [2**i for i in range(2, 8)]
 
-    if switch:
-        ### Vary alpha and error rate
-        errorL = [0.001, 0.01, 0.02, 0.05]
-        alpha_step = 0.1
-        alphaL = [round(alpha_step*i, 4) for i in range(1, int(1 / alpha_step))]
-        covL = [50]
-
-        folder = 'alpha_vs_error'
-    else:
-        ### Vary coverage and alpha
-        errorL = [.001]
-        covL = [2**i for i in range(2, 8)]
-        alpha_step = 0.05
-        alphaL = [round(alpha_step*i, 4) for i in range(1, int(1 / alpha_step))]
-
-        folder = 'coverage_vs_alpha'
+    alpha_step = 0.05
+    alphaL = [round(alpha_step*i, 4) for i in range(1, int(1 / alpha_step))]
 
     cores = 24
+
+    ## Setup arguments
+    parser = argparse.ArgumentParser(description="Runs generate_sample_tsv_complex and mixed_variant_calling on a wide combination of parameters")
+
+    parser.add_argument('--output-folder', default=output_folder, required=True, help="Output folder")
+    parser.add_argument('--errorL', nargs='+', type=float, default=errorL, help="Comma-separated list of sequencing error rates to test")
+    parser.add_argument('--covL', nargs='+', type=int, default=covL, help="Comma-separated list of average coverages to test")
+    parser.add_argument('--alphaL', nargs='+', type=float, default=alphaL, help="Comma-separated list of alpha's (proportion of normal genome) to test")
+    parser.add_argument('--cores', default=cores, help="Multiprocess with this many cores")
+    parser.add_argument('--improved', action='store_true', help="Use improved algorithm for alpha and variant calling.")
+    args = parser.parse_args()
+
+    folder = args.output_folder
+    errorL = args.errorL
+    covL = args.covL
+    alphaL = args.alphaL
+    cores = args.cores
 
     if not os.path.isdir(folder): os.makedirs(folder)
 
     param_list = [(a,e,c) for a in alphaL for e in errorL for c in covL]
 
-    make_script(param_list, folder, cores)
+    run_all(param_list, folder, cores)

@@ -181,7 +181,7 @@ def main():
 
     ### find population frequencies ###
 
-    parL = grid_search_parameters(0.1) # grid search
+    parL = grid_search_parameters(0.01) # grid search
 
     germ_mu = 0.001
     soma_mu = 0.00001
@@ -234,7 +234,6 @@ def main():
             
     f = open(inN.split('.txt')[0]+'.ll', 'w')
 
-    print >>sys.stderr, 'Computing likelihoods'
     ll_list = []
     for normal_alpha, cancer_alpha in parL:
 
@@ -242,7 +241,7 @@ def main():
                 log(sum([freq_prob*compute_likelihood(alt_reads, num_reads, normal_freq, normal_alpha, cancer_freq, cancer_alpha, error_rate)\
                              for normal_freq, cancer_freq, freq_prob in genL]))\
                     for alt_reads, num_reads in read_list if alt_reads!=0 and alt_reads!=num_reads])
-        print >>sys.stderr, inN, str(normal_alpha), str(ll)
+
         print >>f, str(ll)+'\t'+str(normal_alpha)+'\t'+str(cancer_alpha)
         f.flush()
 
@@ -252,24 +251,24 @@ def main():
 
     best_ll, best_par = max(zip(ll_list, parL), key=lambda x: x[0])                                
 
-    print >>sys.stderr, 'Computing genotypes'
-
-    ### Predicting genotypes
+    ### Determine genotypes
     print >>outF, '#log-likelihood\t{0}\n#population frequencies\t{1}'.format(best_ll,'\t'.join([ str(x) for x in best_par ]))
     
     # Re-read the input tsv file (before imposing coverage cutoff)
     site_list = [x.split('\t') for x in open(inN).read().split('\n') if x!='' and x[0]!='#']
-    # List of (chrom, pos, alt_reads, num_reads)
-    site_list = [(x[0],x[1],int(x[5]),int(x[4])+int(x[5])) for x in site_list]
-    site_list = [x for x in site_list if x[2]>cov_cutoff and x[3]-x[2]>cov_cutoff and x[3]>cov_cutoff]
 
-    # List of (chrom, pos)
-    pos_list  = [(x[0], x[1]) for x in site_list]
+    parser.add_argument('infile', help='Input tsv file. Columns should be: chrom, position, ref base, alt base, number of reads supporting reference, number of reads supporting alternate.')
     
-    site_list = [[freq_prob*compute_likelihood(alt_reads, num_reads, normal_freq, best_par[0], cancer_freq, best_par[1], error_rate) for normal_freq, cancer_freq, freq_prob in genL] for chrom,pos,alt_reads,num_reads in site_list]
-    predicted_genotypes = [genotypes[max(enumerate(ll_list), key=lambda x:x[1])[0]] for ll_list in site_list]
-
-    print >>outF, '\n'.join(['\t'.join([chrom,pos,normal_gen,cancer_gen]) for (chrom,pos),(normal_gen,cancer_gen) in zip(pos_list, predicted_genotypes)]) + '\n'
+    for chrom, pos, t1, t2, ref_reads, alt_reads in site_list:
+        alt_reads = int(alt_reads)
+        num_reads = int(ref_reads) + alt_reads
+        
+        ll_list = [freq_prob*compute_likelihood(alt_reads, num_reads, normal_freq, best_par[0], cancer_freq, best_par[1], error_rate) for normal_freq, cancer_freq, freq_prob in genL]
+        gen_idx, ll = max(enumerate(ll_list), key=lambda x:x[1])
+        
+        normal_gen, cancer_gen = genotypes[gen_idx]
+        
+        print >>outF, '\t'.join([chrom,pos,normal_gen,cancer_gen])
 
 if __name__ == '__main__':
     main()
